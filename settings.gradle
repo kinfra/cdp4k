@@ -1,0 +1,21 @@
+pluginManagement {
+    def versions = [
+        'ru.kontur': '5.1',
+        'org.jetbrains.kotlin': '1.3.71'
+    ]
+
+    resolutionStrategy {
+        eachPlugin {
+            def namespace = requested.id.namespace
+            versions.forEach { prefix, version ->
+                if (namespace?.startsWith(prefix)) {
+                    useVersion(version)
+                }
+            }
+        }
+    }
+}
+
+rootProject.name = "cdp4k"
+
+include ":samples"
