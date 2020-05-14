@@ -1,20 +1,18 @@
-import com.fasterxml.jackson.databind.node.JsonNodeFactory
-import com.fasterxml.jackson.databind.node.ObjectNode
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.actor
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import ru.kontur.cdp4k.impl.ChromeLauncher
 import ru.kontur.cdp4k.impl.rpc.DefaultRpcConnection
+import ru.kontur.cdp4k.impl.rpc.HealthCheckingRpcConnection
 import ru.kontur.cdp4k.protocol.CdpExperimental
 import ru.kontur.cdp4k.protocol.browser.BrowserDomain
 import ru.kontur.cdp4k.protocol.io.IoDomain
 import ru.kontur.cdp4k.protocol.io.RemoteInputStream
 import ru.kontur.cdp4k.protocol.page.LoadEventFired
 import ru.kontur.cdp4k.protocol.page.PageDomain
-import ru.kontur.cdp4k.protocol.subscribeOnce
+import ru.kontur.cdp4k.protocol.subscribeFirst
 import ru.kontur.cdp4k.protocol.target.TargetDomain
 import ru.kontur.cdp4k.rpc.RpcConnection
-import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.jinfra.logging.Logger
 import ru.kontur.jinfra.logging.LoggingContext
 import ru.kontur.kinfra.commons.time.MonotonicInstant
@@ -22,13 +20,12 @@ import ru.kontur.kinfra.io.OutputByteStream
 import ru.kontur.kinfra.io.use
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
 
 private val logger = Logger.currentClass().withoutContext()
 
-private val counters = ConcurrentHashMap<String, AtomicLong>()
+private val counters = ConcurrentHashMap<String, Pair<Int, Long>>()
 
 @OptIn(CdpExperimental::class)
 @Suppress("BlockingMethodInNonBlockingContext")
@@ -64,20 +61,21 @@ fun main() = runBlocking {
         "--disable-popup-blocking"
     )
 
-    val executions = AtomicInteger()
+    val executorsCount = 3
+    val cyclesCount = 2
 
     val connection = ChromeLauncher.launchWithPipe("/usr/lib/chromium-browser/chromium-browser", chromeArgs)
-    DefaultRpcConnection.open(connection).use { rpcConnection ->
-        val browserSession = rpcConnection.browserSession
-        val browserDomain = BrowserDomain(browserSession)
-        val targetDomain = TargetDomain(browserSession)
+    val rpcConnection = DefaultRpcConnection.open(connection)
+        .let { HealthCheckingRpcConnection(it) }
+    rpcConnection.use {
+        rpcConnection.useBrowserSession { browserSession ->
+            val browserDomain = BrowserDomain(browserSession)
+            val targetDomain = TargetDomain(browserSession)
 
-        coroutineScope {
-            repeat(Runtime.getRuntime().availableProcessors()) { executorIndex ->
-                launch {
-                    withContext(LoggingContext.with("executor", executorIndex.toString())) {
-                        repeat(2) {
-                            executions.incrementAndGet()
+            coroutineScope {
+                repeat(executorsCount) { executorIndex ->
+                    launch(LoggingContext.with("executor", executorIndex.toString())) {
+                        repeat(cyclesCount) {
                             logExecutionTime("total") {
                                 printPdf(targetDomain, rpcConnection, executorIndex)
                             }
@@ -85,14 +83,15 @@ fun main() = runBlocking {
                     }
                 }
             }
-        }
 
-        browserDomain.close()
+            browserDomain.close()
+        }
     }
 
-    logger.info { "Counters:" }
+    logger.info { "Avg counters:" }
     counters.forEach { (operation, counter) ->
-        logger.info { "$operation: ${counter.toDouble() / executions.toDouble()}" }
+        val (invocations, totalTime) = counter
+        logger.info { "$operation: ${totalTime.toDouble() / invocations.toDouble()}" }
     }
 }
 
@@ -107,24 +106,23 @@ private suspend fun printPdf(
     try {
         val pageSessionId = targetDomain.attachToTarget(pageTargetId)
         try {
-            rpcConnection.openSession(pageSessionId.value).use { pageSession ->
+            rpcConnection.useSession(pageSessionId.value) { pageSession ->
                 val pageDomain = PageDomain(pageSession)
 
                 val pdfIndex = (executorIndex % 3) + 1
-                val inputFile = Path.of("/home/frostbit/Desktop/extracts/small$pdfIndex.html")
+                val inputFile = Path.of(System.getProperty("user.home") + "/Desktop/extracts/small$pdfIndex.html")
+                val url = inputFile.toUri()
+                // val url = URI("http://localhost:8080")
 
                 logExecutionTime("page load") {
-                    val pageLoaded = CompletableDeferred<Unit>()
                     pageDomain.stopLoading()
-                    pageDomain.subscribeOnce(LoadEventFired) {
-                        pageLoaded.complete(Unit)
-                    }
+                    val pageLoaded = pageDomain.subscribeFirst(LoadEventFired)
 
-                    val url = inputFile.toUri()
                     val navigateResult = pageDomain.navigate(url.toString())
                     navigateResult.errorText?.let { err ->
-                        throw RuntimeException("Failed to load page $url: $err")
+                        throw RuntimeException("Failed to navigate page $url: $err")
                     }
+
                     pageLoaded.join()
                 }
 
@@ -134,8 +132,8 @@ private suspend fun printPdf(
 
                 logExecutionTime("PDF transfer") {
                     RemoteInputStream(pdfResponse.stream!!, IoDomain(pageSession)).use { input ->
-                        // input.transferTo(OutputByteStream.nullStream())
                         val destPath = inputFile.resolveSibling("result${executorIndex}.pdf")
+                        // input.transferTo(OutputByteStream.nullStream())
                         OutputByteStream.intoFile(destPath).use { output ->
                             input.transferTo(output)
                         }
@@ -152,17 +150,17 @@ private suspend fun printPdf(
 
 private inline fun <R> logExecutionTime(operationName: String, block: () -> R): R {
     val startTime = MonotonicInstant.now()
-    return try {
-        block()
-    } finally {
+    return block().also {
         val elapsed = MonotonicInstant.now() - startTime
-        val counter = counters.computeIfAbsent(operationName) { AtomicLong() }
-        counter.addAndGet(elapsed.toMillis())
-        logger.info { "Executed $operationName in ${elapsed.toMillis()} ms" }
+        updateCounter(operationName, elapsed)
     }
 }
 
-private suspend fun RpcSession.executeRequest(method: String, paramsBuilder: ObjectNode.() -> Unit = {}): ObjectNode {
-    val params = JsonNodeFactory.instance.objectNode().apply(paramsBuilder)
-    return executeRequest(method, params)
+private fun updateCounter(operationName: String, time: Duration) {
+    val timeMillis = time.toMillis()
+    counters.compute(operationName) { _, counter ->
+        val (invocations, totalTime) = counter ?: (0 to 0L)
+        invocations + 1 to totalTime + timeMillis
+    }
+    logger.info { "Executed $operationName in $timeMillis ms" }
 }

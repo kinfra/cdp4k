@@ -19,30 +19,32 @@ internal class PipeChromeConnection private constructor(
     private val codec: CdpStreamCodec
 ) : ChromeConnection {
 
-    private lateinit var job: Job
-
     private val subscriber = CompletableDeferred<ChromeConnection.Subscriber>()
     private val outgoing = Channel<ObjectNode>()
 
+    private lateinit var job: Job
+
     private fun open() {
-        val pid = process.pid()
         val messageStream = codec.createMessageStream(process.inputStream, process.outputStream)
 
-        this.job = GlobalScope.launch(LoggingContext.EMPTY.add("pid", process.pid()) + Dispatchers.IO) {
+        this.job = GlobalScope.launch(Dispatchers.IO + LoggingContext.EMPTY.add("pid", process.pid())) {
             try {
                 coroutineScope {
-                    launch(CoroutineName("Chrome stdout reader (pid: $pid)")) {
+                    launch(CoroutineName("Chrome pipe reader")) {
                         val subscriber = subscriber.await()
-                        while (isActive) {
+                        while (true) {
                             val message = messageStream.readMessage() ?: break
                             subscriber.onIncomingMessage(message)
+                            yield()
                         }
+                        logger.debug { "End of stream reached" }
                     }
 
-                    launch(CoroutineName("Chrome stdin writer (pid: $pid)")) {
-                        while (isActive) {
+                    launch(CoroutineName("Chrome pipe writer")) {
+                        while (true) {
                             val message = outgoing.receiveOrNull() ?: break
                             messageStream.writeMessage(message)
+                            yield()
                         }
                     }
 

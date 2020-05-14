@@ -1,27 +1,22 @@
 package ru.kontur.cdp4k.impl.rpc
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
-import com.fasterxml.jackson.databind.node.NumericNode
 import com.fasterxml.jackson.databind.node.ObjectNode
-import kotlinx.coroutines.*
-import kotlinx.coroutines.time.delay
-import kotlinx.coroutines.time.withTimeout
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import ru.kontur.cdp4k.connection.ChromeConnection
-import ru.kontur.cdp4k.impl.EMPTY_TREE
-import ru.kontur.cdp4k.impl.getObjectOrNull
-import ru.kontur.cdp4k.impl.getString
 import ru.kontur.cdp4k.impl.getStringOrNull
 import ru.kontur.cdp4k.protocol.browser.BrowserDomain
 import ru.kontur.cdp4k.rpc.RpcConnection
 import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.jinfra.logging.Logger
-import ru.kontur.kinfra.commons.Either
-import java.time.Duration
+import ru.kontur.kinfra.commons.binary.toHexString
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
-
-internal typealias RpcResult = Either<ObjectNode, ObjectNode>
+import kotlin.random.Random
 
 class DefaultRpcConnection private constructor(
     private val connection: ChromeConnection
@@ -30,16 +25,13 @@ class DefaultRpcConnection private constructor(
     private val closed = AtomicBoolean(false)
     private val nextRequestId = AtomicLong(1)
 
-    private val _browserSession = createSession(id = null)
-    override val browserSession: RpcSession get() = _browserSession
-
     // Modifications must be performed with lock
     private val sessions = ConcurrentHashMap<String, RpcSessionImpl>()
 
     private suspend fun open() {
         connection.subscribe(
             object : ChromeConnection.Subscriber {
-                override fun onIncomingMessage(message: ObjectNode) {
+                override suspend fun onIncomingMessage(message: ObjectNode) {
                     this@DefaultRpcConnection.onIncomingMessage(message)
                 }
 
@@ -49,61 +41,61 @@ class DefaultRpcConnection private constructor(
             }
         )
 
-        val browserDomain = BrowserDomain(browserSession)
-        val version = browserDomain.getVersion()
-        logger.info { "Connected to ${version.product} (protocol version: ${version.protocolVersion})" }
-
-        startConnectionHealthCheck()
+        useBrowserSession { browserSession ->
+            val browserDomain = BrowserDomain(browserSession)
+            val version = browserDomain.getVersion()
+            logger.info { "Connected to ${version.product} (protocol version: ${version.protocolVersion})" }
+        }
     }
 
-    // fixme: move away to a decorator
-    private fun startConnectionHealthCheck() {
-        val browserDomain = BrowserDomain(browserSession)
-        GlobalScope.launch(CoroutineName("RPC connection health check")) {
-            while (isActive) {
-                delay(HEALTH_CHECK_PERIOD)
-                try {
-                    withTimeout(HEALTH_CHECK_TIMEOUT) {
-                        browserDomain.getVersion()
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.error(e) { "Health check failed, closing connection" }
-                    close()
-                    break
+    override suspend fun <R> useBrowserSession(block: suspend CoroutineScope.(RpcSession) -> R): R {
+        return useSessionInternal(null, block)
+    }
+
+    override suspend fun <R> useSession(id: String, block: suspend CoroutineScope.(RpcSession) -> R): R {
+        return useSessionInternal(id, block)
+    }
+
+    private suspend fun <R> useSessionInternal(id: String?, block: suspend CoroutineScope.(RpcSession) -> R): R {
+        return withContext(CoroutineName("CDP session $id")) {
+            val session = openSession(id, this)
+            try {
+                coroutineScope {
+                    block(session)
                 }
+            } finally {
+                closeSession(session)
             }
-        }
-    }
-
-    override fun openSession(id: String): RpcSession {
-        return synchronized(sessions) {
-            check(sessions[id] == null) { "Session $id already exists" }
-            createSession(id).also {
-                sessions[id] = it
-            }
-        }
-    }
-
-    internal fun detachSession(id: String) {
-        synchronized(sessions) {
-            val session = sessions.remove(id)
-            checkNotNull(session) { "No such session: $id" }
         }
     }
 
     private fun findSession(id: String?): RpcSessionImpl? {
-        return if (id == null) {
-            _browserSession
-        } else {
-            sessions[id]
+        return sessions[getSessionKey(id)]
+    }
+
+    private fun openSession(id: String?, scope: CoroutineScope): RpcSessionImpl {
+        return synchronized(sessions) {
+            check(!closed.get()) { "Connection is closed" }
+
+            val key = getSessionKey(id)
+            check(!sessions.containsKey(key)) { "Session with id '$id' already in use" }
+            RpcSessionImpl(id, this, nextRequestId, scope).also {
+                it.open()
+                sessions[key] = it
+            }
         }
     }
 
-    private fun createSession(id: String?): RpcSessionImpl {
-        return RpcSessionImpl(id, this, nextRequestId)
+    private fun closeSession(session: RpcSessionImpl) {
+        synchronized(sessions) {
+            val key = getSessionKey(session.sessionId)
+            val removedSession = sessions.remove(key)
+            check(removedSession == session)
+        }
+        session.close()
     }
+
+    private fun getSessionKey(id: String?) = id ?: BROWSER_SESSION_KEY
 
     internal suspend fun sendRequest(sessionId: String?, id: Long, methodName: String, params: ObjectNode) {
         val requestMessage = ObjectNode(JsonNodeFactory.instance).apply {
@@ -115,48 +107,16 @@ class DefaultRpcConnection private constructor(
         connection.send(requestMessage)
     }
 
-    private fun onIncomingMessage(message: ObjectNode) {
-        val logger = logger.withoutContext()
-
+    private suspend fun onIncomingMessage(message: ObjectNode) {
         val sessionId = message.getStringOrNull("sessionId")
         val session = findSession(sessionId) ?: run {
             logger.debug { "Received a message for unknown session $sessionId" }
             return
         }
 
-        val requestId = message.get("id")
-        if (requestId != null) {
-            if (requestId !is NumericNode) {
-                logger.warn { "Unexpected response id: $requestId" }
-                return
-            }
-
-            val id = requestId.longValue()
-            val rpcResult = parseResult(message)
-            session.onResult(id, rpcResult)
-        } else {
-            val method = message.getString("method")
-            val params = message.getObjectOrNull("params") ?: EMPTY_TREE
-            session.onEvent(method, params)
-        }
-    }
-
-    private fun parseResult(message: ObjectNode): RpcResult {
-        val result = message.getObjectOrNull("result")
-        val error = message.getObjectOrNull("error")
-        return when {
-            error == null -> {
-                requireNotNull(result) {
-                    val messageFields = message.fieldNames().asSequence().toList()
-                    "Response must contain either result or error, got $messageFields"
-                }
-                Either.right(result)
-            }
-
-            result == null -> Either.left(error)
-
-            else -> throw IllegalArgumentException("Response must contain either result or error, got both")
-        }
+        val parsedMessage = IncomingMessage.parse(message)
+        logger.debug { "Received message ${parsedMessage.messageId} for session $sessionId: $parsedMessage" }
+        session.onIncomingMessage(parsedMessage)
     }
 
     private fun onConnectionClosed() {
@@ -175,9 +135,10 @@ class DefaultRpcConnection private constructor(
     }
 
     private fun cleanup() {
-        _browserSession.onDisconnect()
-        for (session in sessions.values) {
-            session.onDisconnect()
+        synchronized(sessions) {
+            for (session in sessions.values) {
+                session.onDisconnect()
+            }
         }
     }
 
@@ -185,8 +146,8 @@ class DefaultRpcConnection private constructor(
 
         private val logger = Logger.currentClass()
 
-        private val HEALTH_CHECK_PERIOD = Duration.ofSeconds(5)
-        private val HEALTH_CHECK_TIMEOUT = Duration.ofSeconds(3)
+        // random string
+        private val BROWSER_SESSION_KEY = "browser_" + Random.nextBytes(8).toHexString()
 
         suspend fun open(chromeConnection: ChromeConnection): DefaultRpcConnection {
             return DefaultRpcConnection(chromeConnection).also {

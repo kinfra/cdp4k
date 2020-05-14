@@ -11,7 +11,7 @@ interface ChromeConnection : SuspendingCloseable {
 
     interface Subscriber {
 
-        fun onIncomingMessage(message: ObjectNode)
+        suspend fun onIncomingMessage(message: ObjectNode)
 
         fun onConnectionClosed()
 

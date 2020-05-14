@@ -1,9 +1,11 @@
 package ru.kontur.cdp4k.impl.rpc
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.ClosedSendChannelException
+import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.channels.actor
+import ru.kontur.cdp4k.connection.ConnectionClosedException
 import ru.kontur.cdp4k.rpc.RpcErrorException
 import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.jinfra.logging.Logger
@@ -13,20 +15,34 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.coroutines.coroutineContext
 
 internal class RpcSessionImpl(
     internal val sessionId: String?,
     override val connection: DefaultRpcConnection,
-    private val nextRequestId: AtomicLong
-): RpcSession {
+    private val nextRequestId: AtomicLong,
+    private val scope: CoroutineScope
+) : RpcSession {
 
     private val state = AtomicReference(SessionState.ACTIVE)
 
     private val activeRequests = ConcurrentHashMap<Long, Request>()
     private val subscriptions = ConcurrentHashMap<String, MutableCollection<Subscription>>()
 
+    private lateinit var incomingMessages: SendChannel<IncomingMessage>
+
+    internal fun open() {
+        @OptIn(ObsoleteCoroutinesApi::class)
+        incomingMessages = scope.actor(capacity = 1) {
+            for (message in channel) {
+                handleIncomingMessage(message)
+            }
+        }
+    }
+
     override suspend fun executeRequest(methodName: String, params: ObjectNode): ObjectNode {
         checkNotClosed()
+        coroutineContext.ensureActive()
 
         val id = nextRequestId.getAndIncrement()
         val request = Request(id)
@@ -38,6 +54,9 @@ internal class RpcSessionImpl(
         val result = try {
             checkActive()
             request.result.await()
+        } catch (e: Exception) {
+            logger.debug { "Interrupted waiting for a response (id: $id): $e" }
+            throw e
         } finally {
             request.result.cancel()
             activeRequests.remove(id)
@@ -65,48 +84,64 @@ internal class RpcSessionImpl(
         check(state.get() == SessionState.ACTIVE) { "Session is ${state.get().lowerCaseName}" }
     }
 
-    internal fun onResult(requestId: Long, rpcResult: RpcResult) {
-        val logger = logger.withoutContext()
-        val request = activeRequests.remove(requestId)
-        if (request != null) {
-            logger.debug { "Response for request $requestId (session: $sessionId): $rpcResult" }
-            request.result.complete(rpcResult)
-        } else {
-            logger.debug { "Received response for unknown request $requestId (session: $sessionId)" }
+    internal suspend fun onIncomingMessage(message: IncomingMessage) {
+        if (state.get() == SessionState.CLOSED) return
+
+        try {
+            incomingMessages.send(message)
+        } catch (e: ClosedSendChannelException) {
+            logger.debug { "Ignoring message ${message.messageId}: channel is closed" }
+        } catch (e: CancellationException) {
+            logger.debug { "Ignoring message ${message.messageId}: handler is cancelled" }
         }
     }
 
-    internal fun onEvent(methodName: String, data: ObjectNode) {
-        val logger = logger.withoutContext()
-        logger.debug { "Received an event for session $sessionId: $methodName $data" }
+    private suspend fun handleIncomingMessage(message: IncomingMessage) {
+        when (message) {
+            is IncomingMessage.Response -> handleResponse(message)
+            is IncomingMessage.Event -> handleEvent(message)
+        }
+        logger.debug { "Processed message ${message.messageId}" }
+    }
 
+    private suspend fun handleResponse(response: IncomingMessage.Response) {
+        val (requestId, rpcResult) = response
+        val request = activeRequests.remove(requestId)
+        if (request != null) {
+            request.result.complete(rpcResult)
+        } else {
+            logger.debug { "No matching request (id: $requestId) for response message ${response.messageId}" }
+        }
+    }
+
+    private suspend fun handleEvent(event: IncomingMessage.Event) {
+        val (methodName, data) = event
         subscriptions[methodName]?.let { methodSubscriptions ->
-            for (subscription in methodSubscriptions) {
-                subscription.notifyEvent(data)
+            try {
+                for (subscription in methodSubscriptions) {
+                    subscription.notifyEvent(data)
+                }
+            } catch (e: Exception) {
+                logger.error {
+                    "Failed to process event message ${event.messageId}:" +
+                        " subscriber of $methodName threw an exception;" +
+                        " session will be closed"
+                }
+                throw e
             }
         }
     }
 
     internal fun onDisconnect() {
         if (!state.compareAndSet(SessionState.ACTIVE, SessionState.DISCONNECTED)) return
-        cancelRequests("Connection is closed")
+        logger.withoutContext().debug { "Session $sessionId disconnected" }
+        incomingMessages.close(ConnectionClosedException("Connection is closed"))
     }
 
-    private fun cancelRequests(reason: String) {
-        val count = activeRequests.size
-        if (count > 0) {
-            for (request in activeRequests.values) {
-                request.result.cancel(reason)
-            }
-            logger.withoutContext().debug { "Cancelled $count requests in session $sessionId" }
-        }
-    }
-
-    override fun close() {
-        checkNotNull(sessionId) { "Browser session cannot be closed" }
+    internal fun close() {
         if (!state.compareAndSet(SessionState.ACTIVE, SessionState.CLOSED)) return
-        connection.detachSession(sessionId)
-        cancelRequests("Session is closed")
+        logger.withoutContext().debug { "Session $sessionId closed" }
+        incomingMessages.close()
     }
 
     override fun toString(): String {

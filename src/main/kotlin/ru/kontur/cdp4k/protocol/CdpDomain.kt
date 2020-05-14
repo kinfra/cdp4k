@@ -46,7 +46,6 @@ abstract class CdpDomain<E : CdpEvent> internal constructor(
         val subscriberWrapper = { data: ObjectNode ->
             val subscription = subscriptionRef.get()
             if (subscription != null) {
-                // todo: handle exceptions
                 // todo: avoid parsing the tree for each subscriber
                 val parsedData = eventCompanion.parse(data)
                 subscriber(parsedData, subscription)

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import ru.kontur.cdp4k.impl.getString
 import ru.kontur.cdp4k.impl.getStringOrNull
 import ru.kontur.cdp4k.protocol.CdpDomain
+import ru.kontur.cdp4k.protocol.CdpExperimental
 import ru.kontur.cdp4k.protocol.io.StreamHandle
 import ru.kontur.cdp4k.rpc.RpcSession
 
@@ -12,6 +13,11 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
 
     override val id: String
         get() = "Page"
+
+    @CdpExperimental
+    suspend fun crash() {
+        invoke("crash")
+    }
 
     suspend fun enable() {
         invoke("enable")

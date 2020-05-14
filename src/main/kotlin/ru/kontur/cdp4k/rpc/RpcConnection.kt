@@ -4,9 +4,9 @@ import ru.kontur.kinfra.io.SuspendingCloseable
 
 interface RpcConnection : SuspendingCloseable {
 
-    val browserSession: RpcSession
+    suspend fun <R> useBrowserSession(block: SessionUsage<R>): R
 
-    fun openSession(id: String): RpcSession
+    suspend fun <R> useSession(id: String, block: SessionUsage<R>): R
 
 }
 
