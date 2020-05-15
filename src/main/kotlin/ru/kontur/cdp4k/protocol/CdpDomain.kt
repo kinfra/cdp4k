@@ -5,7 +5,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ru.kontur.cdp4k.impl.EMPTY_TREE
 import ru.kontur.cdp4k.rpc.RpcSession
-import java.util.concurrent.atomic.AtomicReference
 
 abstract class CdpDomain<E : CdpEvent> internal constructor(
     private val session: RpcSession
@@ -31,7 +30,7 @@ abstract class CdpDomain<E : CdpEvent> internal constructor(
     }
 
     suspend fun <T : E> subscribe(
-        eventCompanion: EventCompanion<T>,
+        eventCompanion: CdpEventCompanion<T>,
         subscriber: EventSubscriber<T>
     ): EventSubscription {
 
@@ -42,24 +41,18 @@ abstract class CdpDomain<E : CdpEvent> internal constructor(
             }
         }
 
-        val subscriptionRef = AtomicReference<EventSubscription>()
         val subscriberWrapper = { data: ObjectNode ->
-            val subscription = subscriptionRef.get()
-            if (subscription != null) {
-                // todo: avoid parsing the tree for each subscriber
-                val parsedData = eventCompanion.parse(data)
-                subscriber(parsedData, subscription)
-            }
+            // todo: avoid parsing the tree for each subscriber
+            val parsedData = eventCompanion.parse(data)
+            subscriber(parsedData)
         }
 
         val rpcSubscription = session.subscribe("$id.${eventCompanion.methodName}", subscriberWrapper)
-        val subscription = object : EventSubscription {
+        return object : EventSubscription {
             override fun close() {
                 rpcSubscription.close()
             }
         }
-        subscriptionRef.set(subscription)
-        return subscription
     }
 
     protected open suspend fun enableEvents() = Unit

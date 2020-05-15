@@ -2,13 +2,13 @@ package ru.kontur.cdp4k.protocol.target
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import ru.kontur.cdp4k.impl.getObject
-import ru.kontur.cdp4k.protocol.EventCompanion
+import ru.kontur.cdp4k.protocol.CdpEventCompanion
 
 class TargetCreated(
     val targetInfo: TargetInfo
 ) : TargetEvent() {
 
-    companion object : EventCompanion<TargetCreated>("targetCreated") {
+    companion object : CdpEventCompanion<TargetCreated>("targetCreated") {
 
         override fun parse(tree: ObjectNode): TargetCreated {
             return TargetCreated(

@@ -3,7 +3,9 @@ package ru.kontur.cdp4k.impl
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.*
 
-internal val EMPTY_TREE = JsonNodeFactory.instance.objectNode()
+internal val EMPTY_TREE = jsonObject()
+
+internal fun jsonObject(): ObjectNode = JsonNodeFactory.instance.objectNode()
 
 // todo: eliminate duplicate code
 

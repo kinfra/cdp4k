@@ -1,9 +1,9 @@
-package ru.kontur.cdp4k.impl
+package ru.kontur.cdp4k.impl.pipe.launch
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-object BashPipeRedirection {
+internal object BashExecPipeLauncher : PipeLauncher {
     /*
      * Chrome uses file descriptors 3 and 4 for CDP I/O.
      * These descriptors are inaccessible from plain Java.
@@ -14,7 +14,7 @@ object BashPipeRedirection {
 
     private val specialChars = listOf(' ', '\'', '"', '<', '>', '&', '\\')
 
-    suspend fun runWithRedirection(executable: String, args: List<String>): Process {
+    override suspend fun launchChrome(executable: String, args: List<String>): Process {
         @OptIn(ExperimentalStdlibApi::class)
         val bashCommand = buildList {
             add("exec")

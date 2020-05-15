@@ -1,10 +1,10 @@
 package ru.kontur.cdp4k.protocol.io
 
-import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
 import ru.kontur.cdp4k.impl.getBoolean
 import ru.kontur.cdp4k.impl.getBooleanOrNull
 import ru.kontur.cdp4k.impl.getString
+import ru.kontur.cdp4k.impl.jsonObject
 import ru.kontur.cdp4k.protocol.CdpDomain
 import ru.kontur.cdp4k.rpc.RpcSession
 
@@ -14,7 +14,7 @@ class IoDomain(session: RpcSession) : CdpDomain<Nothing>(session) {
         get() = "IO"
 
     suspend fun close(handle: StreamHandle) {
-        val params = JsonNodeFactory.instance.objectNode().apply {
+        val params = jsonObject().apply {
             put("handle", handle.value)
         }
         invoke("close", params)
@@ -26,7 +26,7 @@ class IoDomain(session: RpcSession) : CdpDomain<Nothing>(session) {
         size: Long? = null
     ): ReadResult {
 
-        val params = JsonNodeFactory.instance.objectNode().apply {
+        val params = jsonObject().apply {
             put("handle", handle.value)
             if (offset != null) put("offset", offset)
             if (size != null) put("size", size)

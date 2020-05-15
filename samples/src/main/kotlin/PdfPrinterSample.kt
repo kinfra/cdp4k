@@ -1,7 +1,7 @@
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import ru.kontur.cdp4k.impl.ChromeLauncher
+import ru.kontur.cdp4k.impl.pipe.PipeChromeLauncher
 import ru.kontur.cdp4k.impl.rpc.DefaultRpcConnection
 import ru.kontur.cdp4k.impl.rpc.HealthCheckingRpcConnection
 import ru.kontur.cdp4k.protocol.CdpExperimental
@@ -42,7 +42,6 @@ fun main() = runBlocking {
         "--headless",
         "--no-sandbox",
         "--disable-gpu", "--in-process-gpu",
-        // "--single-process", "--no-zygote",
         "--enable-automation",
 
         // Well-known options, suitable for headless use
@@ -64,7 +63,7 @@ fun main() = runBlocking {
     val executorsCount = 3
     val cyclesCount = 2
 
-    val connection = ChromeLauncher.launchWithPipe("/usr/lib/chromium-browser/chromium-browser", chromeArgs)
+    val connection = PipeChromeLauncher.launchChrome("/usr/lib/chromium-browser/chromium-browser", chromeArgs)
     val rpcConnection = DefaultRpcConnection.open(connection)
         .let { HealthCheckingRpcConnection(it) }
     rpcConnection.use {

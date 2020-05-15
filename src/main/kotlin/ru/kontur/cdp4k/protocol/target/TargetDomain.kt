@@ -1,10 +1,10 @@
 package ru.kontur.cdp4k.protocol.target
 
-import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
 import ru.kontur.cdp4k.impl.getArray
 import ru.kontur.cdp4k.impl.getBoolean
 import ru.kontur.cdp4k.impl.getString
+import ru.kontur.cdp4k.impl.jsonObject
 import ru.kontur.cdp4k.protocol.CdpDomain
 import ru.kontur.cdp4k.protocol.browser.BrowserContextId
 import ru.kontur.cdp4k.rpc.RpcSession
@@ -18,7 +18,7 @@ class TargetDomain(session: RpcSession) : CdpDomain<TargetEvent>(session) {
      * Attaches to the target with given id.
      */
     suspend fun attachToTarget(targetId: TargetId): SessionId {
-        val params = JsonNodeFactory.instance.objectNode().apply {
+        val params = jsonObject().apply {
             put("targetId", targetId.value)
             put("flatten", true)
         }
@@ -29,7 +29,7 @@ class TargetDomain(session: RpcSession) : CdpDomain<TargetEvent>(session) {
      * Closes the target. If the target is a page that gets closed too.
      */
     suspend fun closeTarget(targetId: TargetId): CloseTargetResult {
-        val params = JsonNodeFactory.instance.objectNode().apply {
+        val params = jsonObject().apply {
             put("targetId", targetId.value)
         }
         return invoke("closeTarget", params, ::CloseTargetResult)
@@ -45,7 +45,7 @@ class TargetDomain(session: RpcSession) : CdpDomain<TargetEvent>(session) {
         browserContextId: BrowserContextId? = null
     ): CreateTargetResult {
 
-        val params = JsonNodeFactory.instance.objectNode().apply {
+        val params = jsonObject().apply {
             put("url", url)
             if (width != null) put("width", width)
             if (height != null) put("height", height)
@@ -58,7 +58,7 @@ class TargetDomain(session: RpcSession) : CdpDomain<TargetEvent>(session) {
      * Detaches session with given id.
      */
     suspend fun detachFromTarget(sessionId: SessionId) {
-        val params = JsonNodeFactory.instance.objectNode().apply {
+        val params = jsonObject().apply {
             put("sessionId", sessionId.value)
         }
         return invoke("detachFromTarget", params)
@@ -73,7 +73,7 @@ class TargetDomain(session: RpcSession) : CdpDomain<TargetEvent>(session) {
     }
 
     suspend fun setDiscoverTargets(discover: Boolean) {
-        val params = JsonNodeFactory.instance.objectNode().apply {
+        val params = jsonObject().apply {
             put("discover", discover)
         }
         invoke("setDiscoverTargets", params)

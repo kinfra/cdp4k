@@ -45,8 +45,9 @@ class HealthCheckingRpcConnection(
     private fun CoroutineScope.launchHealthChecks(session: RpcSession, isBrowser: Boolean) = launch {
         if (isBrowser) {
             launchBrowserCheck(session)
+        } else {
+            launchInspectorEventsCheck(session)
         }
-        launchInspectorEventsCheck(session)
     }
 
     private fun CoroutineScope.launchBrowserCheck(session: RpcSession) = launch {

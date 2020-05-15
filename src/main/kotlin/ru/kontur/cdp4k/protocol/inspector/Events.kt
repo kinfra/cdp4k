@@ -3,14 +3,14 @@ package ru.kontur.cdp4k.protocol.inspector
 import com.fasterxml.jackson.databind.node.ObjectNode
 import ru.kontur.cdp4k.impl.getString
 import ru.kontur.cdp4k.protocol.CdpExperimental
-import ru.kontur.cdp4k.protocol.EventCompanion
+import ru.kontur.cdp4k.protocol.CdpEventCompanion
 
 @CdpExperimental
 class DetachedEvent(
     val reason: String
 ) : InspectorEvent() {
 
-    companion object : EventCompanion<DetachedEvent>("detached") {
+    companion object : CdpEventCompanion<DetachedEvent>("detached") {
 
         override fun parse(tree: ObjectNode): DetachedEvent {
             return DetachedEvent(
@@ -25,7 +25,7 @@ class DetachedEvent(
 @CdpExperimental
 class TargetCrashed : InspectorEvent() {
 
-    companion object : EventCompanion<TargetCrashed>("targetCrashed") {
+    companion object : CdpEventCompanion<TargetCrashed>("targetCrashed") {
 
         override fun parse(tree: ObjectNode): TargetCrashed {
             return TargetCrashed()
@@ -38,7 +38,7 @@ class TargetCrashed : InspectorEvent() {
 @CdpExperimental
 class TargetReloadedAfterCrash : InspectorEvent() {
 
-    companion object : EventCompanion<TargetReloadedAfterCrash>("targetReloadedAfterCrash") {
+    companion object : CdpEventCompanion<TargetReloadedAfterCrash>("targetReloadedAfterCrash") {
 
         override fun parse(tree: ObjectNode): TargetReloadedAfterCrash {
             return TargetReloadedAfterCrash()

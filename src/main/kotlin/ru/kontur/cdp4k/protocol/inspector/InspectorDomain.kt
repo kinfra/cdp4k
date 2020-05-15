@@ -11,11 +11,14 @@ class InspectorDomain(session: RpcSession) : CdpDomain<InspectorEvent>(session) 
         get() = "Inspector"
 
     suspend fun enable() {
-
+        invoke("enable")
     }
 
     suspend fun disable() {
-
+        invoke("disable")
     }
 
+    override suspend fun enableEvents() {
+        enable()
+    }
 }

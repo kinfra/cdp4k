@@ -4,17 +4,17 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 
 // todo: remove subscription argument
-typealias EventSubscriber<T> = (event: T, subscription: EventSubscription) -> Unit
+typealias EventSubscriber<T> = (event: T) -> Unit
 
 interface EventSubscription : AutoCloseable
 
 suspend fun <T : E, E : CdpEvent, D : CdpDomain<E>> D.subscribeFirst(
-    eventCompanion: EventCompanion<T>,
+    eventCompanion: CdpEventCompanion<T>,
     predicate: (T) -> Boolean = { true }
 ): Deferred<T> {
 
     val eventDeferred = CompletableDeferred<T>()
-    val subscription = subscribe(eventCompanion) { event, _ ->
+    val subscription = subscribe(eventCompanion) { event ->
         if (predicate(event)) {
             eventDeferred.complete(event)
         }
@@ -38,7 +38,7 @@ suspend fun <T : E, E : CdpEvent, D : CdpDomain<E>> D.subscribeFirst(
  * In the code above a race condition occurs between enabling events for the domain and triggering the event.
  */
 internal suspend fun <T : E, E : CdpEvent, D : CdpDomain<E>> D.waitFor(
-    eventCompanion: EventCompanion<T>,
+    eventCompanion: CdpEventCompanion<T>,
     predicate: (T) -> Boolean = { true }
 ): T {
 

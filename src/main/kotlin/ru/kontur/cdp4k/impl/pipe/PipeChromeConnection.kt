@@ -1,4 +1,4 @@
-package ru.kontur.cdp4k.impl
+package ru.kontur.cdp4k.impl.pipe
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import kotlinx.coroutines.*
@@ -8,15 +8,15 @@ import kotlinx.coroutines.channels.receiveOrNull
 import kotlinx.coroutines.future.await
 import ru.kontur.cdp4k.connection.ChromeConnection
 import ru.kontur.cdp4k.connection.ConnectionClosedException
-import ru.kontur.cdp4k.impl.stream.CdpStreamCodec
+import ru.kontur.cdp4k.impl.kill
+import ru.kontur.cdp4k.impl.pipe.stream.CdpMessageStream
 import ru.kontur.jinfra.logging.Logger
 import ru.kontur.jinfra.logging.LoggingContext
-import ru.kontur.kinfra.commons.thenTake
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class PipeChromeConnection private constructor(
     private val process: Process,
-    private val codec: CdpStreamCodec
+    private val codec: CdpMessageStream.Codec
 ) : ChromeConnection {
 
     private val subscriber = CompletableDeferred<ChromeConnection.Subscriber>()
@@ -74,11 +74,15 @@ internal class PipeChromeConnection private constructor(
     }
 
     override fun subscribe(subscriber: ChromeConnection.Subscriber) {
-        val success = this.subscriber.complete(subscriber)
+        val subscriberDeferred = this.subscriber
+        val success = subscriberDeferred.complete(subscriber)
         if (!success) {
-            val existing = this.subscriber.let { (it.isCompleted && !it.isCancelled).thenTake { it.getCompleted() } }
-            if (existing != null) {
-                throw IllegalStateException("Already subscribed: $existing")
+            check(subscriberDeferred.isCompleted) { "Could not put subscriber into $subscriberDeferred" }
+            if (subscriberDeferred.isCancelled) {
+                subscriber.onConnectionClosed()
+            } else {
+                val existing = subscriberDeferred.getCompleted()
+                error("Already subscribed: $existing")
             }
         }
     }
@@ -88,6 +92,7 @@ internal class PipeChromeConnection private constructor(
     }
 
     override suspend fun close() {
+        logger.debug { "Closing connection to PID ${process.pid()}" }
         process.toHandle().kill()
         job.join()
     }
@@ -96,8 +101,16 @@ internal class PipeChromeConnection private constructor(
 
         private val logger = Logger.currentClass()
 
-        fun open(process: Process, codec: CdpStreamCodec): PipeChromeConnection {
-            return PipeChromeConnection(process, codec).also { it.open() }
+        fun open(process: Process, codec: CdpMessageStream.Codec): PipeChromeConnection {
+            return PipeChromeConnection(process, codec).also {
+                try {
+                    it.open()
+                } catch (e: Throwable) {
+                    // clean up failed process
+                    process.toHandle().destroyForcibly()
+                    throw e
+                }
+            }
         }
 
     }

@@ -1,4 +1,4 @@
-package ru.kontur.cdp4k.impl.stream
+package ru.kontur.cdp4k.impl.pipe.stream
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -10,9 +10,12 @@ import java.nio.channels.Channels
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 
-internal object NullSeparatedJsonStreamCodec : CdpStreamCodec {
+internal object NullSeparatedJsonStreamCodec : CdpMessageStream.Codec {
 
     private val jsonFactory = ObjectMapper().factory
+
+    override val encoding: String
+        get() = "JSON"
 
     override fun createMessageStream(input: InputStream, output: OutputStream): CdpMessageStream {
         val messageReader = StreamReader(input)
@@ -30,7 +33,11 @@ internal object NullSeparatedJsonStreamCodec : CdpStreamCodec {
                 val chars = charDecoder.decode(bytes)
                 val charsReader = with(chars) { CharArrayReader(array(), arrayOffset() + position(), remaining()) }
                 val parser = jsonFactory.createParser(charsReader)
-                return parser.readValueAsTree()
+                return try {
+                    parser.readValueAsTree()
+                } catch (e: Exception) {
+                    throw IllegalArgumentException("Malformed message: $chars", e)
+                }
             }
 
             override fun writeMessage(message: ObjectNode) {

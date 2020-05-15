@@ -1,7 +1,7 @@
 package ru.kontur.cdp4k.protocol.runtime
 
-import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import ru.kontur.cdp4k.impl.getObject
+import ru.kontur.cdp4k.impl.jsonObject
 import ru.kontur.cdp4k.protocol.CdpDomain
 import ru.kontur.cdp4k.rpc.RpcSession
 
@@ -16,7 +16,7 @@ class RuntimeDomain(session: RpcSession) : CdpDomain<Nothing>(session) {
         awaitPromise: Boolean? = null
     ): RemoteObject {
 
-        val params = JsonNodeFactory.instance.objectNode().apply {
+        val params = jsonObject().apply {
             put("expression", expression)
             if (returnByValue != null) put("returnByValue", returnByValue)
             if (awaitPromise != null) put("awaitPromise", awaitPromise)
@@ -25,7 +25,7 @@ class RuntimeDomain(session: RpcSession) : CdpDomain<Nothing>(session) {
     }
 
     suspend fun releaseObject(objectId: RemoteObjectId) {
-        val params = JsonNodeFactory.instance.objectNode().apply {
+        val params = jsonObject().apply {
             put("objectId", objectId.value)
         }
         invoke("releaseObject", params)

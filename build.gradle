@@ -15,7 +15,7 @@ ext {
     ]
 
     branch = project.properties["branch"]?.toString()
-    isStableBranch = (branch == "master") || branch?.startsWith("release-")
+    isStableBranch = false // (branch == "master") || branch?.startsWith("release-")
 }
 
 archivesBaseName = "cdp4k"

@@ -1,9 +1,9 @@
 package ru.kontur.cdp4k.protocol.page
 
-import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
 import ru.kontur.cdp4k.impl.getString
 import ru.kontur.cdp4k.impl.getStringOrNull
+import ru.kontur.cdp4k.impl.jsonObject
 import ru.kontur.cdp4k.protocol.CdpDomain
 import ru.kontur.cdp4k.protocol.CdpExperimental
 import ru.kontur.cdp4k.protocol.io.StreamHandle
@@ -33,7 +33,7 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
         referrer: String? = null
     ): NavigateResult {
 
-        val params = JsonNodeFactory.instance.objectNode().apply {
+        val params = jsonObject().apply {
             put("url", url)
             if (frameId != null) put("frameId", frameId.value)
             if (referrer != null) put("referrer", referrer)
@@ -45,7 +45,7 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
         transferMode: PdfTransferMode = PdfTransferMode.BASE64
     ): PrintToPdfResult {
 
-        val params = JsonNodeFactory.instance.objectNode().apply {
+        val params = jsonObject().apply {
             put("transferMode", transferMode.value)
         }
         return invoke("printToPDF", params) { PrintToPdfResult.fromTree(it) }
