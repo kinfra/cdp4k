@@ -1,4 +1,4 @@
-package ru.kontur.cdp4k.impl.rpc
+package ru.kontur.cdp4k.rpc.impl
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.time.delay
@@ -6,7 +6,7 @@ import ru.kontur.cdp4k.protocol.browser.BrowserDomain
 import ru.kontur.cdp4k.protocol.inspector.DetachedEvent
 import ru.kontur.cdp4k.protocol.inspector.InspectorDomain
 import ru.kontur.cdp4k.protocol.inspector.TargetCrashed
-import ru.kontur.cdp4k.protocol.waitFor
+import ru.kontur.cdp4k.protocol.subscribeFirst
 import ru.kontur.cdp4k.rpc.RpcConnection
 import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.cdp4k.rpc.SessionUsage
@@ -74,11 +74,11 @@ class HealthCheckingRpcConnection(
     private fun CoroutineScope.launchInspectorEventsCheck(session: RpcSession) {
         val inspectorDomain = InspectorDomain(session)
         launch {
-            inspectorDomain.waitFor(TargetCrashed)
+            inspectorDomain.subscribeFirst(TargetCrashed).await()
             throw HealthCheckFailedException("Target is crashed")
         }
         launch {
-            val event = inspectorDomain.waitFor(DetachedEvent)
+            val event = inspectorDomain.subscribeFirst(DetachedEvent).await()
             throw HealthCheckFailedException("Detached from target: ${event.reason}")
         }
     }

@@ -1,10 +1,10 @@
-package ru.kontur.cdp4k.impl.rpc
+package ru.kontur.cdp4k.rpc.impl
 
 import com.fasterxml.jackson.databind.node.NumericNode
 import com.fasterxml.jackson.databind.node.ObjectNode
-import ru.kontur.cdp4k.impl.EMPTY_TREE
-import ru.kontur.cdp4k.impl.getObjectOrNull
-import ru.kontur.cdp4k.impl.getString
+import ru.kontur.cdp4k.util.EMPTY_TREE
+import ru.kontur.cdp4k.util.getObjectOrNull
+import ru.kontur.cdp4k.util.getString
 import ru.kontur.kinfra.commons.Either
 import java.util.concurrent.atomic.AtomicInteger
 

@@ -1,9 +1,12 @@
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import ru.kontur.cdp4k.impl.pipe.PipeChromeLauncher
-import ru.kontur.cdp4k.impl.rpc.DefaultRpcConnection
-import ru.kontur.cdp4k.impl.rpc.HealthCheckingRpcConnection
+import ru.kontur.cdp4k.launch.pipe.PipeChromeLauncher
+import ru.kontur.cdp4k.rpc.impl.DefaultRpcConnection
+import ru.kontur.cdp4k.rpc.impl.HealthCheckingRpcConnection
+import ru.kontur.cdp4k.launch.ChromeCommandLine
+import ru.kontur.cdp4k.launch.ChromeSwitches
+import ru.kontur.cdp4k.launch.useHeadlessDefaults
 import ru.kontur.cdp4k.protocol.CdpExperimental
 import ru.kontur.cdp4k.protocol.browser.BrowserDomain
 import ru.kontur.cdp4k.protocol.io.IoDomain
@@ -30,40 +33,20 @@ private val counters = ConcurrentHashMap<String, Pair<Int, Long>>()
 @OptIn(CdpExperimental::class)
 @Suppress("BlockingMethodInNonBlockingContext")
 fun main() = runBlocking {
-
-    val dataDir = Path.of("./build/chrome").toAbsolutePath()
+    val dataDir = Path.of("./build/chrome")
     dataDir.toFile().deleteRecursively()
     Files.createDirectories(dataDir)
 
-    val chromeArgs = listOf(
-        "--user-data-dir=$dataDir",
-
-        // PDF printing works in Headless Chrome only
-        "--headless",
-        "--no-sandbox",
-        "--disable-gpu", "--in-process-gpu",
-        "--enable-automation",
-
-        // Well-known options, suitable for headless use
-        "--disable-features=TranslateUI",
-        "--disable-extensions",
-        "--disable-component-extensions-with-background-pages",
-        "--disable-background-networking",
-        "--safebrowsing-disable-auto-update",
-        "--disable-sync",
-        "--metrics-recording-only",
-        "--disable-default-apps",
-        "--mute-audio",
-        "--no-first-run",
-        "--no-default-browser-check",
-        "--disable-plugin-power-saver",
-        "--disable-popup-blocking"
-    )
+    val chromePath = "/usr/lib/chromium-browser/chromium-browser"
+    val commandLine = ChromeCommandLine.build(chromePath, dataDir) {
+        useHeadlessDefaults()
+        add(ChromeSwitches.noSandbox)
+    }
 
     val executorsCount = 3
     val cyclesCount = 2
 
-    val connection = PipeChromeLauncher.launchChrome("/usr/lib/chromium-browser/chromium-browser", chromeArgs)
+    val connection = PipeChromeLauncher.launchChrome(commandLine)
     val rpcConnection = DefaultRpcConnection.open(connection)
         .let { HealthCheckingRpcConnection(it) }
     rpcConnection.use {

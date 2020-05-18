@@ -1,4 +1,4 @@
-package ru.kontur.cdp4k.impl.pipe.stream
+package ru.kontur.cdp4k.connection.pipe.stream
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -6,7 +6,6 @@ import java.io.CharArrayReader
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
-import java.nio.channels.Channels
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 
@@ -48,9 +47,8 @@ internal object NullSeparatedJsonStreamCodec : CdpMessageStream.Codec {
         }
     }
 
-    private class StreamReader(input: InputStream) {
+    private class StreamReader(private val input: InputStream) {
 
-        private val input = Channels.newChannel(input)
         private val chunk = ByteBuffer.allocate(8192).apply { flip() }
         private var builder = BufferBuilder()
 
@@ -60,7 +58,6 @@ internal object NullSeparatedJsonStreamCodec : CdpMessageStream.Codec {
                     // read some data
                     chunk.clear()
                     try {
-                        // todo: replace with impl that does not copy data to a temporary array
                         val eof = input.read(chunk) == -1
                         if (eof) {
                             return builder.build()
@@ -84,6 +81,14 @@ internal object NullSeparatedJsonStreamCodec : CdpMessageStream.Codec {
                     }
                 }
             }
+        }
+
+        private fun InputStream.read(buffer: ByteBuffer): Int {
+            val count = read(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining())
+            if (count > 0) {
+                buffer.position(buffer.position() + count)
+            }
+            return count
         }
 
         private fun ByteBuffer.findNull(): Int {

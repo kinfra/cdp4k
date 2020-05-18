@@ -1,4 +1,4 @@
-package ru.kontur.cdp4k.impl.pipe.stream
+package ru.kontur.cdp4k.connection.pipe.stream
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import java.io.InputStream

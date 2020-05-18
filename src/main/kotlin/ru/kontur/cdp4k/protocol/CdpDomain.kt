@@ -3,10 +3,10 @@ package ru.kontur.cdp4k.protocol
 import com.fasterxml.jackson.databind.node.ObjectNode
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ru.kontur.cdp4k.impl.EMPTY_TREE
+import ru.kontur.cdp4k.util.EMPTY_TREE
 import ru.kontur.cdp4k.rpc.RpcSession
 
-abstract class CdpDomain<E : CdpEvent> internal constructor(
+abstract class CdpDomain<in E : CdpEvent> internal constructor(
     private val session: RpcSession
 ) {
 

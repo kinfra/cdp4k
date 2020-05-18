@@ -2,8 +2,8 @@ package ru.kontur.cdp4k.protocol.runtime
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
-import ru.kontur.cdp4k.impl.getString
-import ru.kontur.cdp4k.impl.getStringOrNull
+import ru.kontur.cdp4k.util.getString
+import ru.kontur.cdp4k.util.getStringOrNull
 
 class RemoteObject(
     val type: String,

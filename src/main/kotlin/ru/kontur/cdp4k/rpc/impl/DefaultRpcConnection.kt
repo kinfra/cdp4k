@@ -1,4 +1,4 @@
-package ru.kontur.cdp4k.impl.rpc
+package ru.kontur.cdp4k.rpc.impl
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -8,7 +8,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import ru.kontur.cdp4k.connection.ChromeConnection
 import ru.kontur.cdp4k.connection.ConnectionClosedException
-import ru.kontur.cdp4k.impl.getStringOrNull
+import ru.kontur.cdp4k.util.getStringOrNull
 import ru.kontur.cdp4k.protocol.browser.BrowserDomain
 import ru.kontur.cdp4k.rpc.RpcConnection
 import ru.kontur.cdp4k.rpc.RpcSession

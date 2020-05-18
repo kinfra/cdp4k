@@ -1,7 +1,7 @@
 package ru.kontur.cdp4k.protocol.target
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import ru.kontur.cdp4k.impl.getObject
+import ru.kontur.cdp4k.util.getObject
 import ru.kontur.cdp4k.protocol.CdpEventCompanion
 
 class TargetCreated(

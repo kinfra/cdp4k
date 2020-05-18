@@ -1,4 +1,4 @@
-package ru.kontur.cdp4k.impl
+package ru.kontur.cdp4k.util
 
 import kotlinx.coroutines.future.await
 import ru.kontur.jinfra.logging.Logger

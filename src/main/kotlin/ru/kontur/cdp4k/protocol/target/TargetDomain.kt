@@ -1,10 +1,10 @@
 package ru.kontur.cdp4k.protocol.target
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import ru.kontur.cdp4k.impl.getArray
-import ru.kontur.cdp4k.impl.getBoolean
-import ru.kontur.cdp4k.impl.getString
-import ru.kontur.cdp4k.impl.jsonObject
+import ru.kontur.cdp4k.util.getArray
+import ru.kontur.cdp4k.util.getBoolean
+import ru.kontur.cdp4k.util.getString
+import ru.kontur.cdp4k.util.jsonObject
 import ru.kontur.cdp4k.protocol.CdpDomain
 import ru.kontur.cdp4k.protocol.browser.BrowserContextId
 import ru.kontur.cdp4k.rpc.RpcSession

@@ -1,4 +1,4 @@
-package ru.kontur.cdp4k.impl
+package ru.kontur.cdp4k.util
 
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers

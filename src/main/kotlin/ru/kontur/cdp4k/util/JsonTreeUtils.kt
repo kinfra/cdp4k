@@ -1,4 +1,4 @@
-package ru.kontur.cdp4k.impl
+package ru.kontur.cdp4k.util
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.*

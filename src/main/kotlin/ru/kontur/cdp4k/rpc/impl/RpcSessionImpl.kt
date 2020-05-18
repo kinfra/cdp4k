@@ -1,4 +1,4 @@
-package ru.kontur.cdp4k.impl.rpc
+package ru.kontur.cdp4k.rpc.impl
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import kotlinx.coroutines.*
