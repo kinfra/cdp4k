@@ -15,6 +15,7 @@ import ru.kontur.cdp4k.util.getStringOrNull
 import ru.kontur.jinfra.logging.Logger
 import ru.kontur.kinfra.commons.binary.toHexString
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.random.Random
@@ -27,7 +28,7 @@ class DefaultRpcConnection private constructor(
     private val nextRequestId = AtomicLong(1)
 
     // Modifications must be performed with lock
-    private val sessions = ConcurrentHashMap<String, RpcSessionImpl>()
+    private val sessions = ConcurrentHashMap<String, MutableCollection<RpcSessionImpl>>()
 
     private suspend fun open() {
         connection.subscribe(
@@ -70,8 +71,8 @@ class DefaultRpcConnection private constructor(
         }
     }
 
-    private fun findSession(id: String?): RpcSessionImpl? {
-        return sessions[getSessionKey(id)]
+    private fun findSessions(id: String?): Collection<RpcSessionImpl> {
+        return sessions.getOrDefault(getSessionKey(id), emptyList())
     }
 
     private fun openSession(id: String?, scope: CoroutineScope): RpcSessionImpl {
@@ -81,21 +82,28 @@ class DefaultRpcConnection private constructor(
             }
 
             val key = getSessionKey(id)
-            check(!sessions.containsKey(key)) { "Session with id '$id' already in use" }
+            val sessionsById = sessions.computeIfAbsent(key) { CopyOnWriteArrayList() }
             RpcSessionImpl(id, this, nextRequestId, scope).also {
                 it.open()
-                sessions[key] = it
+                sessionsById.add(it)
             }
         }
     }
 
     private fun closeSession(session: RpcSessionImpl) {
-        synchronized(sessions) {
-            val key = getSessionKey(session.sessionId)
-            val removedSession = sessions.remove(key)
-            check(removedSession == session)
+        try {
+            synchronized(sessions) {
+                val key = getSessionKey(session.sessionId)
+                val sessionsById = checkNotNull(sessions[key]) { "No sessions with ID ${session.sessionId} are opened" }
+                val removed = sessionsById.remove(session)
+                check(removed) { "Session $session not found" }
+                if (sessionsById.isEmpty()) {
+                    sessions.remove(key)
+                }
+            }
+        } finally {
+            session.close()
         }
-        session.close()
     }
 
     private fun getSessionKey(id: String?) = id ?: BROWSER_SESSION_KEY
@@ -112,14 +120,17 @@ class DefaultRpcConnection private constructor(
 
     private suspend fun onIncomingMessage(message: ObjectNode) {
         val sessionId = message.getStringOrNull("sessionId")
-        val session = findSession(sessionId) ?: run {
+        val targetSessions = findSessions(sessionId)
+        if (targetSessions.isEmpty()) {
             logger.debug { "Received a message for unknown session $sessionId" }
             return
         }
 
         val parsedMessage = IncomingMessage.parse(message)
         logger.debug { "Received message ${parsedMessage.messageId} for session $sessionId: $parsedMessage" }
-        session.onIncomingMessage(parsedMessage)
+        for (session in targetSessions) {
+            session.onIncomingMessage(parsedMessage)
+        }
     }
 
     private fun onConnectionClosed() {
@@ -139,9 +150,9 @@ class DefaultRpcConnection private constructor(
 
     private fun cleanup() {
         synchronized(sessions) {
-            for (session in sessions.values) {
-                session.onDisconnect()
-            }
+            sessions.values.asSequence()
+                .flatten()
+                .forEach { it.onDisconnect() }
         }
     }
 

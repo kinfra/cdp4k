@@ -14,6 +14,7 @@ import ru.kontur.cdp4k.protocol.page.PageDomain
 import ru.kontur.cdp4k.protocol.subscribeFirst
 import ru.kontur.cdp4k.protocol.target.TargetDomain
 import ru.kontur.cdp4k.rpc.RpcConnection
+import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.cdp4k.rpc.impl.DefaultRpcConnection
 import ru.kontur.cdp4k.rpc.impl.HealthCheckingRpcConnection
 import ru.kontur.jinfra.logging.Logger
@@ -52,14 +53,13 @@ fun main() = runBlocking {
     rpcConnection.use {
         rpcConnection.useBrowserSession { browserSession ->
             val browserDomain = BrowserDomain(browserSession)
-            val targetDomain = TargetDomain(browserSession)
 
             coroutineScope {
                 repeat(executorsCount) { executorIndex ->
                     launch(LoggingContext.with("executor", executorIndex.toString())) {
                         repeat(cyclesCount) {
                             logExecutionTime("total") {
-                                printPdf(targetDomain, rpcConnection, executorIndex)
+                                printPdf(rpcConnection, executorIndex)
                             }
                         }
                     }
@@ -77,56 +77,60 @@ fun main() = runBlocking {
     }
 }
 
-private suspend fun printPdf(
-    targetDomain: TargetDomain,
-    rpcConnection: RpcConnection,
-    executorIndex: Int
-) {
+private suspend fun printPdf(rpcConnection: RpcConnection, executorIndex: Int) {
+    newPage(rpcConnection) { pageSession ->
+        val pageDomain = PageDomain(pageSession)
 
-    val pageTargetId = targetDomain.createTarget("about:blank").targetId
+        val pdfIndex = (executorIndex % 3) + 1
+        val inputFile = Path.of(System.getProperty("user.home") + "/Desktop/extracts/small$pdfIndex.html")
+        val url = inputFile.toUri()
+        // val url = URI("http://localhost:8080")
 
-    try {
-        val pageSessionId = targetDomain.attachToTarget(pageTargetId)
-        try {
-            rpcConnection.useSession(pageSessionId.value) { pageSession ->
-                val pageDomain = PageDomain(pageSession)
+        logExecutionTime("page load") {
+            pageDomain.stopLoading()
+            val pageLoaded = pageDomain.subscribeFirst(LoadEventFired)
 
-                val pdfIndex = (executorIndex % 3) + 1
-                val inputFile = Path.of(System.getProperty("user.home") + "/Desktop/extracts/small$pdfIndex.html")
-                val url = inputFile.toUri()
-                // val url = URI("http://localhost:8080")
+            val navigateResult = pageDomain.navigate(url.toString())
+            navigateResult.errorText?.let { err ->
+                throw RuntimeException("Failed to navigate page $url: $err")
+            }
 
-                logExecutionTime("page load") {
-                    pageDomain.stopLoading()
-                    val pageLoaded = pageDomain.subscribeFirst(LoadEventFired)
+            pageLoaded.join()
+        }
 
-                    val navigateResult = pageDomain.navigate(url.toString())
-                    navigateResult.errorText?.let { err ->
-                        throw RuntimeException("Failed to navigate page $url: $err")
-                    }
+        val pdfResponse = logExecutionTime("PDF print") {
+            pageDomain.printToPdf(transferMode = PageDomain.PdfTransferMode.STREAM)
+        }
 
-                    pageLoaded.join()
-                }
-
-                val pdfResponse = logExecutionTime("PDF print") {
-                    pageDomain.printToPdf(transferMode = PageDomain.PdfTransferMode.STREAM)
-                }
-
-                logExecutionTime("PDF transfer") {
-                    RemoteInputStream(pdfResponse.stream!!, IoDomain(pageSession)).use { input ->
-                        val destPath = inputFile.resolveSibling("result${executorIndex}.pdf")
-                        // input.transferTo(OutputByteStream.nullStream())
-                        OutputByteStream.intoFile(destPath).use { output ->
-                            input.transferTo(output)
-                        }
-                    }
+        logExecutionTime("PDF transfer") {
+            RemoteInputStream(pdfResponse.stream!!, IoDomain(pageSession)).use { input ->
+                val destPath = inputFile.resolveSibling("result${executorIndex}.pdf")
+                // input.transferTo(OutputByteStream.nullStream())
+                OutputByteStream.intoFile(destPath).use { output ->
+                    input.transferTo(output)
                 }
             }
-        } finally {
-            targetDomain.detachFromTarget(pageSessionId)
         }
-    } finally {
-        targetDomain.closeTarget(pageTargetId)
+    }
+}
+
+private suspend fun <R> newPage(rpcConnection: RpcConnection, block: suspend (RpcSession) -> R): R {
+    return rpcConnection.useBrowserSession { browserSession ->
+        val targetDomain = TargetDomain(browserSession)
+        val pageTargetId = targetDomain.createTarget("about:blank").targetId
+
+        try {
+            val pageSessionId = targetDomain.attachToTarget(pageTargetId)
+            try {
+                rpcConnection.useSession(pageSessionId.value) { pageSession ->
+                    block(pageSession)
+                }
+            } finally {
+                targetDomain.detachFromTarget(pageSessionId)
+            }
+        } finally {
+            targetDomain.closeTarget(pageTargetId)
+        }
     }
 }
 

@@ -26,7 +26,7 @@ internal class RpcSessionImpl(
 
     private val state = AtomicReference(SessionState.ACTIVE)
 
-    private val activeRequests = ConcurrentHashMap<Long, Request>()
+    private val activeRequests = ConcurrentHashMap<Long, CompletableDeferred<RpcResult>>()
     private val subscriptions = ConcurrentHashMap<String, MutableCollection<Subscription>>()
 
     private lateinit var incomingMessages: SendChannel<IncomingMessage>
@@ -45,20 +45,20 @@ internal class RpcSessionImpl(
         coroutineContext.ensureActive()
 
         val id = nextRequestId.getAndIncrement()
-        val request = Request(id)
-        activeRequests[id] = request
+        val resultDeferred = CompletableDeferred<RpcResult>()
+        activeRequests[id] = resultDeferred
 
         logger.debug { "Sending request $id (session: $sessionId) $methodName $params" }
         connection.sendRequest(sessionId, id, methodName, params)
 
         val result = try {
             checkActive()
-            request.result.await()
+            resultDeferred.await()
         } catch (e: Exception) {
             logger.debug { "Interrupted waiting for a response (id: $id): $e" }
             throw e
         } finally {
-            request.result.cancel()
+            resultDeferred.cancel()
             activeRequests.remove(id)
         }
 
@@ -97,29 +97,32 @@ internal class RpcSessionImpl(
     }
 
     private suspend fun handleIncomingMessage(message: IncomingMessage) {
-        when (message) {
+        val handled = when (message) {
             is IncomingMessage.Response -> handleResponse(message)
             is IncomingMessage.Event -> handleEvent(message)
         }
-        logger.debug { "Processed message ${message.messageId}" }
+        logger.debug { "Processed message ${message.messageId} (handled: $handled)" }
     }
 
-    private suspend fun handleResponse(response: IncomingMessage.Response) {
+    private fun handleResponse(response: IncomingMessage.Response): Boolean {
         val (requestId, rpcResult) = response
         val request = activeRequests.remove(requestId)
-        if (request != null) {
-            request.result.complete(rpcResult)
+        return if (request != null) {
+            request.complete(rpcResult)
+            true
         } else {
-            logger.debug { "No matching request (id: $requestId) for response message ${response.messageId}" }
+            false
         }
     }
 
-    private suspend fun handleEvent(event: IncomingMessage.Event) {
+    private suspend fun handleEvent(event: IncomingMessage.Event): Boolean {
         val (methodName, data) = event
+        var handled = false
         subscriptions[methodName]?.let { methodSubscriptions ->
             try {
                 for (subscription in methodSubscriptions) {
                     subscription.notifyEvent(data)
+                    handled = true
                 }
             } catch (e: Exception) {
                 logger.error {
@@ -130,32 +133,29 @@ internal class RpcSessionImpl(
                 throw e
             }
         }
+        return handled
     }
 
     internal fun onDisconnect() {
         if (!state.compareAndSet(SessionState.ACTIVE, SessionState.DISCONNECTED)) return
-        logger.withoutContext().debug { "Session $sessionId disconnected" }
+        logger.withoutContext().debug { "${this@RpcSessionImpl} is disconnected" }
         incomingMessages.close(ConnectionClosedException("Connection is closed"))
     }
 
     internal fun close() {
         if (!state.compareAndSet(SessionState.ACTIVE, SessionState.CLOSED)) return
-        logger.withoutContext().debug { "Session $sessionId closed" }
+        logger.withoutContext().debug { "${this@RpcSessionImpl} is closed" }
         incomingMessages.close()
     }
 
     override fun toString(): String {
-        return "DefaultRpcConnection.Session(id: $sessionId)"
+        return "RpcSession(id: $sessionId, hash: ${hashCode().toString(16)})"
     }
 
     private enum class SessionState {
         ACTIVE,
         DISCONNECTED,
         CLOSED,
-    }
-
-    private class Request(val id: Long) {
-        val result = CompletableDeferred<RpcResult>()
     }
 
     private class Subscription(

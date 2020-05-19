@@ -12,6 +12,7 @@ import ru.kontur.cdp4k.connection.pipe.stream.CdpMessageStream
 import ru.kontur.cdp4k.util.kill
 import ru.kontur.jinfra.logging.Logger
 import ru.kontur.jinfra.logging.LoggingContext
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class PipeChromeConnection private constructor(
@@ -48,10 +49,24 @@ internal class PipeChromeConnection private constructor(
                         }
                     }
 
+                    launch(CoroutineName("Chrome stderr logger")) {
+                        val stderr = process.errorStream
+                        try {
+                            val reader = stderr.bufferedReader()
+                            while (true) {
+                                val line = reader.readLine() ?: break
+                                logger.debug { "stderr: $line" }
+                            }
+                            logger.debug { "End of stderr" }
+                        } catch (e: IOException) {
+                            logger.error(e) { "Failed to read stderr" }
+                        }
+                    }
+
                     val exitValue = process.onExit().await().exitValue()
                     val message = "Process finished (exit value: $exitValue)"
                     logger.info { message }
-                    coroutineContext[Job]!!.cancelChildren(CancellationException(message))
+                    outgoing.close()
                 }
             } catch (e: Exception) {
                 logger.error(e) { "Connection error" }

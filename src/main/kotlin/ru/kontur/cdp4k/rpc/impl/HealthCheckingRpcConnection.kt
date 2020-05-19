@@ -1,6 +1,8 @@
 package ru.kontur.cdp4k.rpc.impl
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.time.delay
 import ru.kontur.cdp4k.protocol.browser.BrowserDomain
 import ru.kontur.cdp4k.protocol.inspector.DetachedEvent
@@ -21,6 +23,8 @@ class HealthCheckingRpcConnection(
     private val timeout: Duration = DEFAULT_TIMEOUT
 ) : RpcConnection {
 
+    private val browserHealthCheckMutex = Mutex()
+
     override suspend fun <R> useBrowserSession(block: SessionUsage<R>): R {
         return delegate.useBrowserSession(withHealthChecks(true, block))
     }
@@ -34,7 +38,7 @@ class HealthCheckingRpcConnection(
             val job = launchHealthChecks(session, isBrowser)
             try {
                 coroutineScope {
-                    block(session)
+                    block(SessionWrapper(this@HealthCheckingRpcConnection, session))
                 }
             } finally {
                 job.cancel()
@@ -51,11 +55,10 @@ class HealthCheckingRpcConnection(
     }
 
     private fun CoroutineScope.launchBrowserCheck(session: RpcSession) = launch {
-        val browserDomain = BrowserDomain(session)
-        while (true) {
+        browserHealthCheckMutex.withLock(session) {
+            val browserDomain = BrowserDomain(session)
             while (isActive) {
                 delay(period)
-
                 try {
                     withDeadlineAfter(timeout) {
                         browserDomain.getVersion()
@@ -85,6 +88,17 @@ class HealthCheckingRpcConnection(
 
     override suspend fun close() {
         delegate.close()
+    }
+
+    private class SessionWrapper(
+        override val connection: RpcConnection,
+        private val delegate: RpcSession
+    ) : RpcSession by delegate {
+
+        override fun toString(): String {
+            return delegate.toString()
+        }
+
     }
 
     companion object {

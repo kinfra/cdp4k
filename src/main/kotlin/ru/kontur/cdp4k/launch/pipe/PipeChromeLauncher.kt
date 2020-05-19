@@ -6,7 +6,6 @@ import ru.kontur.cdp4k.connection.pipe.stream.NullSeparatedJsonStreamCodec
 import ru.kontur.cdp4k.launch.ChromeCommandLine
 import ru.kontur.cdp4k.launch.ChromeLauncher
 import ru.kontur.cdp4k.launch.ChromeSwitches
-import ru.kontur.cdp4k.util.ProcessErrorLogger
 
 object PipeChromeLauncher : ChromeLauncher {
 
@@ -23,7 +22,6 @@ object PipeChromeLauncher : ChromeLauncher {
         }
 
         val process = pipeLauncher.launchChrome(commandWithDebugging)
-        ProcessErrorLogger(process).startLogging()
         return PipeChromeConnection.open(process, streamCodec)
     }
 
