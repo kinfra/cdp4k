@@ -1,13 +1,13 @@
 package ru.kontur.cdp4k.protocol.page
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import ru.kontur.cdp4k.util.getString
-import ru.kontur.cdp4k.util.getStringOrNull
-import ru.kontur.cdp4k.util.jsonObject
 import ru.kontur.cdp4k.protocol.CdpDomain
 import ru.kontur.cdp4k.protocol.CdpExperimental
 import ru.kontur.cdp4k.protocol.io.StreamHandle
 import ru.kontur.cdp4k.rpc.RpcSession
+import ru.kontur.cdp4k.util.getString
+import ru.kontur.cdp4k.util.getStringOrNull
+import ru.kontur.cdp4k.util.jsonObject
 
 class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
 

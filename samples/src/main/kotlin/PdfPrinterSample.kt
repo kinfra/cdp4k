@@ -1,11 +1,9 @@
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import ru.kontur.cdp4k.launch.pipe.PipeChromeLauncher
-import ru.kontur.cdp4k.rpc.impl.DefaultRpcConnection
-import ru.kontur.cdp4k.rpc.impl.HealthCheckingRpcConnection
 import ru.kontur.cdp4k.launch.ChromeCommandLine
 import ru.kontur.cdp4k.launch.ChromeSwitches
+import ru.kontur.cdp4k.launch.pipe.PipeChromeLauncher
 import ru.kontur.cdp4k.launch.useHeadlessDefaults
 import ru.kontur.cdp4k.protocol.CdpExperimental
 import ru.kontur.cdp4k.protocol.browser.BrowserDomain
@@ -16,6 +14,8 @@ import ru.kontur.cdp4k.protocol.page.PageDomain
 import ru.kontur.cdp4k.protocol.subscribeFirst
 import ru.kontur.cdp4k.protocol.target.TargetDomain
 import ru.kontur.cdp4k.rpc.RpcConnection
+import ru.kontur.cdp4k.rpc.impl.DefaultRpcConnection
+import ru.kontur.cdp4k.rpc.impl.HealthCheckingRpcConnection
 import ru.kontur.jinfra.logging.Logger
 import ru.kontur.jinfra.logging.LoggingContext
 import ru.kontur.kinfra.commons.time.MonotonicInstant

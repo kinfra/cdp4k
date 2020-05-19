@@ -1,9 +1,9 @@
 package ru.kontur.cdp4k.protocol.runtime
 
-import ru.kontur.cdp4k.util.getObject
-import ru.kontur.cdp4k.util.jsonObject
 import ru.kontur.cdp4k.protocol.CdpDomain
 import ru.kontur.cdp4k.rpc.RpcSession
+import ru.kontur.cdp4k.util.getObject
+import ru.kontur.cdp4k.util.jsonObject
 
 class RuntimeDomain(session: RpcSession) : CdpDomain<Nothing>(session) {
 

@@ -1,11 +1,11 @@
 package ru.kontur.cdp4k.protocol.target
 
 import com.fasterxml.jackson.databind.node.ObjectNode
+import ru.kontur.cdp4k.protocol.CdpExperimental
+import ru.kontur.cdp4k.protocol.browser.BrowserContextId
 import ru.kontur.cdp4k.util.getBoolean
 import ru.kontur.cdp4k.util.getString
 import ru.kontur.cdp4k.util.getStringOrNull
-import ru.kontur.cdp4k.protocol.CdpExperimental
-import ru.kontur.cdp4k.protocol.browser.BrowserContextId
 
 class TargetInfo(
     val targetId: TargetId,

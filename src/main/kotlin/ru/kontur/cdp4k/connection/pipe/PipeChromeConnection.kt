@@ -8,8 +8,8 @@ import kotlinx.coroutines.channels.receiveOrNull
 import kotlinx.coroutines.future.await
 import ru.kontur.cdp4k.connection.ChromeConnection
 import ru.kontur.cdp4k.connection.ConnectionClosedException
-import ru.kontur.cdp4k.util.kill
 import ru.kontur.cdp4k.connection.pipe.stream.CdpMessageStream
+import ru.kontur.cdp4k.util.kill
 import ru.kontur.jinfra.logging.Logger
 import ru.kontur.jinfra.logging.LoggingContext
 

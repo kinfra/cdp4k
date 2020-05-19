@@ -1,8 +1,8 @@
 package ru.kontur.cdp4k.protocol.target
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import ru.kontur.cdp4k.util.getObject
 import ru.kontur.cdp4k.protocol.CdpEventCompanion
+import ru.kontur.cdp4k.util.getObject
 
 class TargetCreated(
     val targetInfo: TargetInfo

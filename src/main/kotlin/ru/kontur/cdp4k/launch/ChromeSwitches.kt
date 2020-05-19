@@ -1,7 +1,5 @@
 package ru.kontur.cdp4k.launch
 
-import kotlin.math.sin
-
 object ChromeSwitches {
 
     val disableBackgroundNetworking = binary("disable-background-networking")

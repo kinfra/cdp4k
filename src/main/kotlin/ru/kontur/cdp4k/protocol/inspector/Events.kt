@@ -1,9 +1,9 @@
 package ru.kontur.cdp4k.protocol.inspector
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import ru.kontur.cdp4k.util.getString
-import ru.kontur.cdp4k.protocol.CdpExperimental
 import ru.kontur.cdp4k.protocol.CdpEventCompanion
+import ru.kontur.cdp4k.protocol.CdpExperimental
+import ru.kontur.cdp4k.util.getString
 
 @CdpExperimental
 class DetachedEvent(

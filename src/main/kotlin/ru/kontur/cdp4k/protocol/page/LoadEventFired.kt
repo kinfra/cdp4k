@@ -1,9 +1,9 @@
 package ru.kontur.cdp4k.protocol.page
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import ru.kontur.cdp4k.util.getDouble
 import ru.kontur.cdp4k.protocol.CdpEventCompanion
 import ru.kontur.cdp4k.protocol.network.MonotonicTime
+import ru.kontur.cdp4k.util.getDouble
 
 class LoadEventFired(
     val timestamp: MonotonicTime

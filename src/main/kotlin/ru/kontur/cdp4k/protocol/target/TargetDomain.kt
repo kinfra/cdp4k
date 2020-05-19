@@ -1,13 +1,15 @@
 package ru.kontur.cdp4k.protocol.target
 
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.node.TextNode
+import ru.kontur.cdp4k.protocol.CdpDomain
+import ru.kontur.cdp4k.protocol.CdpExperimental
+import ru.kontur.cdp4k.protocol.browser.BrowserContextId
+import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.cdp4k.util.getArray
 import ru.kontur.cdp4k.util.getBoolean
 import ru.kontur.cdp4k.util.getString
 import ru.kontur.cdp4k.util.jsonObject
-import ru.kontur.cdp4k.protocol.CdpDomain
-import ru.kontur.cdp4k.protocol.browser.BrowserContextId
-import ru.kontur.cdp4k.rpc.RpcSession
 
 class TargetDomain(session: RpcSession) : CdpDomain<TargetEvent>(session) {
 
@@ -33,6 +35,17 @@ class TargetDomain(session: RpcSession) : CdpDomain<TargetEvent>(session) {
             put("targetId", targetId.value)
         }
         return invoke("closeTarget", params, ::CloseTargetResult)
+    }
+
+    /**
+     * Creates a new empty BrowserContext. Similar to an incognito profile but you can have more than one.
+     */
+    @CdpExperimental
+    suspend fun createBrowserContext(disposeOnDetach: Boolean? = null): BrowserContextId {
+        val params = jsonObject().apply {
+            if (disposeOnDetach != null) put("disposeOnDetach", disposeOnDetach)
+        }
+        return invoke("createBrowserContext", params) { BrowserContextId(it.getString("browserContextId")) }
     }
 
     /**
@@ -64,6 +77,33 @@ class TargetDomain(session: RpcSession) : CdpDomain<TargetEvent>(session) {
         return invoke("detachFromTarget", params)
     }
 
+    /**
+     * Deletes a BrowserContext. All the belonging pages will be closed without calling their beforeunload hooks.
+     */
+    @CdpExperimental
+    suspend fun disposeBrowserContext(browserContextId: BrowserContextId) {
+        val params = jsonObject().apply {
+            put("browserContextId", browserContextId.value)
+        }
+        invoke("disposeBrowserContext", params)
+    }
+
+    /**
+     * Returns all browser contexts created with `Target.createBrowserContext` method.
+     */
+    @CdpExperimental
+    suspend fun getBrowserContexts(): List<BrowserContextId> {
+        return invoke("getBrowserContexts") { result ->
+            result.getArray("browserContextIds").elements().asSequence()
+                .map { it as TextNode }
+                .map { BrowserContextId(it.textValue()) }
+                .toList()
+        }
+    }
+
+    /**
+     * Retrieves a list of available targets.
+     */
     suspend fun getTargets(): List<TargetInfo> {
         return invoke("getTargets") { result ->
             result.getArray("targetInfos").elements().asSequence()
@@ -72,6 +112,10 @@ class TargetDomain(session: RpcSession) : CdpDomain<TargetEvent>(session) {
         }
     }
 
+    /**
+     * Controls whether to discover available targets
+     * and notify via `targetCreated`/`targetInfoChanged`/`targetDestroyed` events.
+     */
     suspend fun setDiscoverTargets(discover: Boolean) {
         val params = jsonObject().apply {
             put("discover", discover)
