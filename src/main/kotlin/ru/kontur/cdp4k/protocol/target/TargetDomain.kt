@@ -11,6 +11,9 @@ import ru.kontur.cdp4k.util.getBoolean
 import ru.kontur.cdp4k.util.getString
 import ru.kontur.cdp4k.util.jsonObject
 
+/**
+ * Supports additional targets discovery and allows to attach to them.
+ */
 class TargetDomain(session: RpcSession) : CdpDomain<TargetEvent>(session) {
 
     override val id: String

@@ -10,12 +10,18 @@ class InspectorDomain(session: RpcSession) : CdpDomain<InspectorEvent>(session) 
     override val id: String
         get() = "Inspector"
 
-    suspend fun enable() {
-        invoke("enable")
-    }
-
+    /**
+     * Disables inspector domain notifications.
+     */
     suspend fun disable() {
         invoke("disable")
+    }
+
+    /**
+     * Enables inspector domain notifications.
+     */
+    suspend fun enable() {
+        invoke("enable")
     }
 
     override suspend fun enableEvents() {

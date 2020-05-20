@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 import ru.kontur.cdp4k.connection.ChromeConnection
 import ru.kontur.cdp4k.connection.ConnectionClosedException
 import ru.kontur.cdp4k.protocol.browser.BrowserDomain
+import ru.kontur.cdp4k.protocol.browser.BrowserVersion
 import ru.kontur.cdp4k.rpc.RpcConnection
 import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.cdp4k.util.getStringOrNull
@@ -30,6 +31,9 @@ class DefaultRpcConnection private constructor(
     // Modifications must be performed with lock
     private val sessions = ConcurrentHashMap<String, MutableCollection<RpcSessionImpl>>()
 
+    internal lateinit var browserVersion: BrowserVersion
+        private set
+
     private suspend fun open() {
         connection.subscribe(
             object : ChromeConnection.Subscriber {
@@ -43,11 +47,12 @@ class DefaultRpcConnection private constructor(
             }
         )
 
-        useBrowserSession { browserSession ->
+        val version = useBrowserSession { browserSession ->
             val browserDomain = BrowserDomain(browserSession)
-            val version = browserDomain.getVersion()
-            logger.info { "Connected to ${version.product} (protocol version: ${version.protocolVersion})" }
+            browserDomain.getVersion()
         }
+        this.browserVersion = version
+        logger.info { "Connected to ${version.product} (protocol version: ${version.protocolVersion})" }
     }
 
     override suspend fun <R> useBrowserSession(block: suspend CoroutineScope.(RpcSession) -> R): R {

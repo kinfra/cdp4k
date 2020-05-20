@@ -1,5 +1,8 @@
 package ru.kontur.cdp4k.protocol.network
 
+/**
+ * Monotonically increasing time in seconds since an arbitrary point in the past.
+ */
 class MonotonicTime(val value: Double) : Comparable<MonotonicTime> {
 
     init {

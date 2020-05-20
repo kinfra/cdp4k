@@ -4,53 +4,127 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import ru.kontur.cdp4k.protocol.CdpDomain
 import ru.kontur.cdp4k.protocol.CdpExperimental
 import ru.kontur.cdp4k.protocol.io.StreamHandle
+import ru.kontur.cdp4k.protocol.network.LoaderId
 import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.cdp4k.util.getString
 import ru.kontur.cdp4k.util.getStringOrNull
 import ru.kontur.cdp4k.util.jsonObject
 
+/**
+ * Actions and events related to the inspected page belong to the page domain.
+ */
 class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
 
     override val id: String
         get() = "Page"
 
+    /**
+     * Crashes renderer on the IO thread, generates minidumps.
+     */
     @CdpExperimental
     suspend fun crash() {
         invoke("crash")
     }
 
-    suspend fun enable() {
-        invoke("enable")
-    }
-
+    /**
+     * Disables page domain notifications.
+     */
     suspend fun disable() {
         invoke("disable")
     }
 
+    /**
+     * Enables page domain notifications.
+     */
+    suspend fun enable() {
+        invoke("enable")
+    }
+
+    /**
+     * Navigates current page to the given URL.
+     *
+     * @param url URL to navigate the page to.
+     * @param referrer Referrer URL.
+     * @param transitionType Intended transition type.
+     * @param frameId Frame id to navigate, if not specified navigates the top frame.
+     */
     suspend fun navigate(
         url: String,
-        frameId: FrameId? = null,
-        referrer: String? = null
+        referrer: String? = null,
+        transitionType: TransitionType? = null,
+        frameId: FrameId? = null
     ): NavigateResult {
 
         val params = jsonObject().apply {
             put("url", url)
-            if (frameId != null) put("frameId", frameId.value)
             if (referrer != null) put("referrer", referrer)
+            if (transitionType != null) put("transitionType", transitionType.value)
+            if (frameId != null) put("frameId", frameId.value)
         }
         return invoke("navigate", params) { NavigateResult.fromTree(it) }
     }
 
+    /**
+     * Print page as PDF.
+     *
+     * @param landscape Paper orientation. Defaults to false.
+     * @param displayHeaderFooter Display header and footer. Defaults to false.
+     * @param printBackground Print background graphics. Defaults to false.
+     * @param scale Scale of the webpage rendering. Defaults to 1.
+     * @param paperWidth Paper width in inches. Defaults to 8.5 inches.
+     * @param paperHeight Paper height in inches. Defaults to 11 inches.
+     * @param marginTop Top margin in inches. Defaults to 1cm (~0.4 inches).
+     * @param marginBottom Bottom margin in inches. Defaults to 1cm (~0.4 inches).
+     * @param marginLeft Left margin in inches. Defaults to 1cm (~0.4 inches).
+     * @param marginRight Right margin in inches. Defaults to 1cm (~0.4 inches).
+     * @param pageRanges Paper ranges to print, e.g., '1-5, 8, 11-13'.
+     * Defaults to the empty string, which means print all pages.
+     * @param ignoreInvalidPageRanges Whether to silently ignore invalid but successfully parsed page ranges,
+     * such as '3-2'. Defaults to false.
+     * @param headerTemplate HTML template for the print header.
+     * Should be valid HTML markup with following classes used to inject printing values into them:
+     *
+     *   * date: formatted print date
+     *   * title: document title
+     *   * url: document location
+     *   * pageNumber: current page number
+     *   * totalPages: total pages in the document
+     *
+     * For example, <span class=title></span> would generate span containing the title.
+     * @param footerTemplate HTML template for the print footer. Should use the same format as the [headerTemplate].
+     * @param preferCSSPageSize Whether or not to prefer page size as defined by css.
+     * Defaults to false, in which case the content will be scaled to fit the paper size.
+     * @param transferMode return as stream
+     */
     suspend fun printToPdf(
-        transferMode: PdfTransferMode = PdfTransferMode.BASE64
+        landscape: Boolean? = null,
+        displayHeaderFooter: Boolean? = null,
+        printBackground: Boolean? = null,
+        scale: Double? = null,
+        paperWidth: Double? = null,
+        paperHeight: Double? = null,
+        marginTop: Double? = null,
+        marginBottom: Double? = null,
+        marginLeft: Double? = null,
+        marginRight: Double? = null,
+        pageRanges: String? = null,
+        ignoreInvalidPageRanges: Boolean? = null,
+        headerTemplate: String? = null,
+        footerTemplate: String? = null,
+        preferCSSPageSize: Boolean? = null,
+        @CdpExperimental
+        transferMode: PdfTransferMode? = null
     ): PrintToPdfResult {
 
         val params = jsonObject().apply {
-            put("transferMode", transferMode.value)
+            if (transferMode != null) put("transferMode", transferMode.value)
         }
         return invoke("printToPDF", params) { PrintToPdfResult.fromTree(it) }
     }
 
+    /**
+     * Force the page stop all navigations and pending resource fetches.
+     */
     suspend fun stopLoading() {
         invoke("stopLoading")
     }
@@ -59,15 +133,26 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
         enable()
     }
 
+    /**
+     * Value of `transferMode` parameter of [PageDomain.printToPdf].
+     */
     enum class PdfTransferMode(val value: String) {
+
         BASE64("ReturnAsBase64"),
         STREAM("ReturnAsStream"),
     }
 
+    /**
+     * Result of invoking [PageDomain.navigate].
+     *
+     * @property frameId Frame id that has navigated (or failed to navigate)
+     * @property loaderId Loader identifier.
+     * @property errorText User friendly error message, present if and only if navigation has failed.
+     */
     class NavigateResult(
         val frameId: FrameId,
+        val loaderId: LoaderId?,
         val errorText: String?
-        /*loaderId*/
     ) {
 
         companion object {
@@ -75,6 +160,7 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
             fun fromTree(tree: ObjectNode): NavigateResult {
                 return NavigateResult(
                     frameId = FrameId(tree.getString("frameId")),
+                    loaderId = tree.getStringOrNull("loaderId")?.let { LoaderId(it) },
                     errorText = tree.getStringOrNull("errorText")
                 )
             }
@@ -83,8 +169,31 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
 
     }
 
+    enum class TransitionType(val value: String) {
+        LINK("link"),
+        TYPED("typed"),
+        ADDRESS_BAR("address_bar"),
+        AUTO_BOOKMARK("auto_bookmark"),
+        AUTO_SUBFRAME("auto_subframe"),
+        MANUAL_SUBFRAME("manual_subframe"),
+        GENERATED("generated"),
+        AUTO_TOPLEVEL("auto_toplevel"),
+        FORM_SUBMIT("form_submit"),
+        RELOAD("reload"),
+        KEYWORD("keyword"),
+        KEYWORD_GENERATED("keyword_generated"),
+        OTHER("other"),
+    }
+
+    /**
+     * Result of invoking [PageDomain.printToPdf].
+     *
+     * @property data Base64-encoded pdf data.
+     * @property stream A handle of the stream that holds resulting PDF data.
+     */
     class PrintToPdfResult(
         val data: String,
+        @property:CdpExperimental
         val stream: StreamHandle?
     ) {
 

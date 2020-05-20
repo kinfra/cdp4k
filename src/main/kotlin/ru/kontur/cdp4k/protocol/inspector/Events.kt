@@ -5,6 +5,9 @@ import ru.kontur.cdp4k.protocol.CdpEventCompanion
 import ru.kontur.cdp4k.protocol.CdpExperimental
 import ru.kontur.cdp4k.util.getString
 
+/**
+ * Fired when remote debugging connection is about to be terminated. Contains detach reason.
+ */
 @CdpExperimental
 class DetachedEvent(
     val reason: String
@@ -22,6 +25,9 @@ class DetachedEvent(
 
 }
 
+/**
+ * Fired when debugging target has crashed.
+ */
 @CdpExperimental
 class TargetCrashed : InspectorEvent() {
 
@@ -35,6 +41,9 @@ class TargetCrashed : InspectorEvent() {
 
 }
 
+/**
+ * Fired when debugging target has reloaded after crash.
+ */
 @CdpExperimental
 class TargetReloadedAfterCrash : InspectorEvent() {
 

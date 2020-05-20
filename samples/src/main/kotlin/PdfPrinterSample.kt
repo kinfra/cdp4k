@@ -31,7 +31,6 @@ private val logger = Logger.currentClass().withoutContext()
 
 private val counters = ConcurrentHashMap<String, Pair<Int, Long>>()
 
-@OptIn(CdpExperimental::class)
 @Suppress("BlockingMethodInNonBlockingContext")
 fun main() = runBlocking {
     val dataDir = Path.of("./build/chrome")
@@ -44,8 +43,8 @@ fun main() = runBlocking {
         add(ChromeSwitches.noSandbox)
     }
 
-    val executorsCount = 3
-    val cyclesCount = 2
+    val executorsCount = 16
+    val cyclesCount = 100
 
     val connection = PipeChromeLauncher.launchChrome(commandLine)
     val rpcConnection = DefaultRpcConnection.open(connection)
@@ -77,6 +76,7 @@ fun main() = runBlocking {
     }
 }
 
+@OptIn(CdpExperimental::class)
 private suspend fun printPdf(rpcConnection: RpcConnection, executorIndex: Int) {
     newPage(rpcConnection) { pageSession ->
         val pageDomain = PageDomain(pageSession)

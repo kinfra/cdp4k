@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import ru.kontur.cdp4k.protocol.CdpEventCompanion
 import ru.kontur.cdp4k.util.getObject
 
+/**
+ * Issued when a possible inspection target is created.
+ */
 class TargetCreated(
     val targetInfo: TargetInfo
 ) : TargetEvent() {
