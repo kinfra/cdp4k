@@ -117,6 +117,21 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
     ): PrintToPdfResult {
 
         val params = jsonObject().apply {
+            if (landscape != null) put("landscape", landscape)
+            if (displayHeaderFooter != null) put("displayHeaderFooter", displayHeaderFooter)
+            if (printBackground != null) put("printBackground", printBackground)
+            if (scale != null) put("scale", scale)
+            if (paperWidth != null) put("paperWidth", paperWidth)
+            if (paperHeight != null) put("paperHeight", paperHeight)
+            if (marginTop != null) put("marginTop", marginTop)
+            if (marginBottom != null) put("marginBottom", marginBottom)
+            if (marginLeft != null) put("marginLeft", marginLeft)
+            if (marginRight != null) put("marginRight", marginRight)
+            if (pageRanges != null) put("pageRanges", pageRanges)
+            if (ignoreInvalidPageRanges != null) put("ignoreInvalidPageRanges", ignoreInvalidPageRanges)
+            if (headerTemplate != null) put("headerTemplate", headerTemplate)
+            if (footerTemplate != null) put("footerTemplate", footerTemplate)
+            if (preferCSSPageSize != null) put("preferCSSPageSize", preferCSSPageSize)
             if (transferMode != null) put("transferMode", transferMode.value)
         }
         return invoke("printToPDF", params) { PrintToPdfResult.fromTree(it) }
@@ -137,7 +152,6 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
      * Value of `transferMode` parameter of [PageDomain.printToPdf].
      */
     enum class PdfTransferMode(val value: String) {
-
         BASE64("ReturnAsBase64"),
         STREAM("ReturnAsStream"),
     }
