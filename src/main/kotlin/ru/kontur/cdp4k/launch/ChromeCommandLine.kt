@@ -1,13 +1,28 @@
 package ru.kontur.cdp4k.launch
 
 import java.nio.file.Path
+import java.util.*
+import kotlin.collections.LinkedHashMap
 
 class ChromeCommandLine private constructor(
     val command: String,
-    val options: Collection<ChromeOption>
+    private val _options: Map<ChromeSwitch, ChromeOption>
 ) {
 
-    // todo: add retrieval methods for options?
+    val options: Collection<ChromeOption>
+        get() = _options.values
+
+    operator fun get(switch: ChromeSwitch.Binary): Boolean {
+        return _options.containsKey(switch)
+    }
+
+    operator fun get(switch: ChromeSwitch.SingleValue): String? {
+        return _options[switch]?.value
+    }
+
+    operator fun get(switch: ChromeSwitch.MultiValue): Collection<String> {
+        return _options[switch]?.let { switch.getValues(it) } ?: emptyList()
+    }
 
     inline fun modify(block: Builder.() -> Unit): ChromeCommandLine {
         return toBuilder().apply(block).build()
@@ -18,13 +33,27 @@ class ChromeCommandLine private constructor(
         return Builder(command, options)
     }
 
+    override fun equals(other: Any?): Boolean {
+        return other is ChromeCommandLine
+            && other.command == command
+            && other._options == _options
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(command, _options)
+    }
+
+    override fun toString(): String {
+        return "$command $options"
+    }
+
     class Builder internal constructor(
         internal val command: String,
         options: Collection<ChromeOption>
     ) {
 
-        private val options = LinkedHashMap<ChromeSwitch, ChromeOption>().apply {
-            options.forEach { put(it.switch, it) }
+        private val options = LinkedHashMap<ChromeSwitch, ChromeOption>(options.size).also { map ->
+            options.associateByTo(map) { it.switch }
         }
 
         fun add(switch: ChromeSwitch.Binary) {
@@ -58,7 +87,7 @@ class ChromeCommandLine private constructor(
 
         @PublishedApi
         internal fun build(): ChromeCommandLine {
-            return ChromeCommandLine(command, options.values.toList())
+            return ChromeCommandLine(command, options.toMap())
         }
 
     }

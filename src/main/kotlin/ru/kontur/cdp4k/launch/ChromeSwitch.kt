@@ -48,9 +48,14 @@ sealed class ChromeSwitch(val name: String) {
             return ChromeOption(this, allValues.joinToString(","))
         }
 
-        fun plusValues(option: ChromeOption, vararg values: String): ChromeOption {
+        internal fun plusValues(option: ChromeOption, vararg values: String): ChromeOption {
             require(option.switch == this) { "Cannot merge ${option.switch} with $this" }
             return withValue(option.value, *values)
+        }
+
+        internal fun getValues(option: ChromeOption): Collection<String> {
+            require(option.switch == this) { "Invalid option: $option, expected $this" }
+            return option.value.split(',')
         }
 
     }
