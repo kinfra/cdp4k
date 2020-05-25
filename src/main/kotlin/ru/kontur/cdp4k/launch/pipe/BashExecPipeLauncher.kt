@@ -4,17 +4,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ru.kontur.cdp4k.launch.ChromeCommandLine
 
+/*
+ * Starts Chrome via a Bash command,
+ * which redirects descriptors 3 and 4 to 0 and 1 respectively.
+ *
+ * This approach has a downside: any garbage in Chrome's stdout will break the communication.
+ * Some launcher scripts for Chromium in Linux distributions print debug output there.
+ */
 internal object BashExecPipeLauncher : PipeLauncher {
-    /*
-     * Chrome uses file descriptors 3 and 4 for CDP I/O.
-     * These descriptors are inaccessible from plain Java.
-     * The only available are 0 (stdin), 1 (stdout), and 2 (stderr).
-     * This class starts Chrome via a Bash command,
-     * which redirects descriptors 3 and 4 to 0 and 1 respectively.
-     *
-     * This approach have a downside: any garbage in Chrome's stdout will break the communication.
-     * Some launcher scripts for Chromium in Linux distributions print debug output there.
-     */
 
     private val specialChars = listOf(' ', '\'', '"', '<', '>', '&', '\\')
 

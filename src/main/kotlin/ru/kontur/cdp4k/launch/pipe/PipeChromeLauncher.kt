@@ -5,7 +5,6 @@ import ru.kontur.cdp4k.connection.pipe.PipeChromeConnection
 import ru.kontur.cdp4k.connection.pipe.stream.NullSeparatedJsonStreamCodec
 import ru.kontur.cdp4k.launch.AbstractChromeLauncher
 import ru.kontur.cdp4k.launch.ChromeCommandLine
-import ru.kontur.cdp4k.launch.ChromeLauncher
 import ru.kontur.cdp4k.launch.ChromeSwitches
 
 object PipeChromeLauncher : AbstractChromeLauncher() {
