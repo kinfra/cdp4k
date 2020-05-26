@@ -28,6 +28,7 @@ internal class PipeChromeConnection private constructor(
     private fun open() {
         val messageStream = codec.createMessageStream(process.inputStream, process.outputStream)
 
+        @Suppress("BlockingMethodInNonBlockingContext")
         this.job = GlobalScope.launch(Dispatchers.IO + LoggingContext.EMPTY.add("pid", process.pid())) {
             try {
                 coroutineScope {

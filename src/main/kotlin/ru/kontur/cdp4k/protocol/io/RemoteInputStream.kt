@@ -1,5 +1,6 @@
 package ru.kontur.cdp4k.protocol.io
 
+import kotlinx.coroutines.CancellationException
 import ru.kontur.kinfra.io.InputByteStream
 import ru.kontur.kinfra.io.OutputByteStream
 import java.io.IOException
@@ -63,7 +64,14 @@ class RemoteInputStream(
         closed = true
 
         try {
+            // This call may fail when the current coroutine is cancelled
+            // and connection's outgoing buffer is full.
+            // It is ok if the current session is closing,
+            // otherwise it may lead to leak on the Chrome side.
+            // todo: prevent stream leak on cancellation
             ioDomain.close(handle)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw IOException("Failed to close stream $handle", e)
         }

@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.coroutines.coroutineContext
 
 internal class RpcSessionImpl(
     internal val sessionId: String?,
@@ -42,7 +41,6 @@ internal class RpcSessionImpl(
 
     override suspend fun executeRequest(methodName: String, params: ObjectNode): ObjectNode {
         checkNotClosed()
-        coroutineContext.ensureActive()
 
         val id = nextRequestId.getAndIncrement()
         val resultDeferred = CompletableDeferred<RpcResult>()
