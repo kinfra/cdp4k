@@ -12,6 +12,7 @@ import ru.kontur.cdp4k.protocol.subscribeFirst
 import ru.kontur.cdp4k.rpc.RpcConnection
 import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.cdp4k.rpc.SessionUsage
+import ru.kontur.jinfra.logging.Logger
 import ru.kontur.kinfra.commons.time.withDeadlineAfter
 import java.time.Duration
 
@@ -67,7 +68,9 @@ class HealthCheckingRpcConnection(
                     if (e is CancellationException && e !is TimeoutCancellationException) {
                         throw e
                     } else {
-                        throw HealthCheckFailedException("Health check of browser session is failed", e)
+                        logger.error { "Browser session health check failed: $e; connection will be closed" }
+                        this@HealthCheckingRpcConnection.close()
+                        throw HealthCheckFailedException("Health check of browser session failed", e)
                     }
                 }
             }
@@ -78,7 +81,7 @@ class HealthCheckingRpcConnection(
         val inspectorDomain = InspectorDomain(session)
         launch {
             inspectorDomain.subscribeFirst(TargetCrashed).await()
-            throw HealthCheckFailedException("Target is crashed")
+            throw HealthCheckFailedException("Target crashed")
         }
         launch {
             val event = inspectorDomain.subscribeFirst(DetachedEvent).await()
@@ -105,6 +108,8 @@ class HealthCheckingRpcConnection(
 
         private val DEFAULT_PERIOD = Duration.ofSeconds(5)
         private val DEFAULT_TIMEOUT = Duration.ofSeconds(3)
+
+        private val logger = Logger.currentClass()
 
     }
 

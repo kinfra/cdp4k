@@ -43,7 +43,7 @@ fun main() = runBlocking {
         add(ChromeSwitches.noSandbox)
     }
 
-    val executorsCount = 16
+    val executorsCount = 2
     val cyclesCount = 100
 
     val connection = PipeChromeLauncher.launchChrome(commandLine)

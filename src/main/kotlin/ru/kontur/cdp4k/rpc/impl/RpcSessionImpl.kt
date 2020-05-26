@@ -87,10 +87,16 @@ internal class RpcSessionImpl(
 
         try {
             incomingMessages.send(message)
-        } catch (e: ClosedSendChannelException) {
-            logger.debug { "Ignoring message ${message.messageId}: channel is closed" }
-        } catch (e: CancellationException) {
-            logger.debug { "Ignoring message ${message.messageId}: handler is cancelled" }
+        } catch (e: Exception) {
+            logger.debug {
+                val causeMessage = when (e) {
+                    is CancellationException -> "handler is cancelled"
+                    is ClosedSendChannelException -> "channel is closed"
+                    else -> "handler crashed: $e"
+                }
+
+                "Ignoring message ${message.messageId}: $causeMessage"
+            }
         }
     }
 
