@@ -48,7 +48,7 @@ class ChromeCommandLine private constructor(
     }
 
     class Builder internal constructor(
-        internal val command: String,
+        private val command: String,
         options: Collection<ChromeOption>
     ) {
 
@@ -83,6 +83,7 @@ class ChromeCommandLine private constructor(
 
         fun remove(switch: ChromeSwitch) {
             require(switch != ChromeSwitches.userDataDir) { "$switch cannot be removed" }
+            options.remove(switch)
         }
 
         @PublishedApi
