@@ -29,13 +29,13 @@ allprojects {
 
     plugins.withId('java') {
         dependencies {
-            allMain platform("org.jetbrains.kotlinx:kotlinx-coroutines-bom:${versions.coroutines}")
-            allMain platform("com.fasterxml.jackson:jackson-bom:${versions.jackson}")
+            implementation platform("org.jetbrains.kotlinx:kotlinx-coroutines-bom:${versions.coroutines}")
+            implementation platform("com.fasterxml.jackson:jackson-bom:${versions.jackson}")
 
             constraints {
-                allMain "ru.kontur.kinfra:kinfra-commons:${versions.commons}"
                 allMain "ru.kontur.kinfra:kinfra-io:${versions.io}"
-                allMain "ru.kontur.jinfra:jinfra-logging:${versions.logging}"
+                implementation "ru.kontur.kinfra:kinfra-commons:${versions.commons}"
+                implementation "ru.kontur.jinfra:jinfra-logging:${versions.logging}"
             }
         }
     }
@@ -43,8 +43,6 @@ allprojects {
 
 dependencies {
     api "ru.kontur.kinfra:kinfra-io"
-    api "com.fasterxml.jackson.core:jackson-core"
-
     implementation "ru.kontur.kinfra:kinfra-commons"
     implementation "ru.kontur.jinfra:jinfra-logging"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8"
