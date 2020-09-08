@@ -4,11 +4,11 @@ plugins {
 }
 
 ext {
-    release = "0.1.1"
+    release = "0.2"
 
     versions = [
         commons: '1.4',
-        io: '0.1',
+        io: '0.2',
         logging: '0.14',
 
         jackson: '2.10.3',
@@ -29,27 +29,24 @@ allprojects {
 
     plugins.withId('java') {
         dependencies {
-            allMain platform("org.jetbrains.kotlinx:kotlinx-coroutines-bom:${versions.coroutines}")
-            allMain platform("com.fasterxml.jackson:jackson-bom:${versions.jackson}")
+            implementation platform("org.jetbrains.kotlinx:kotlinx-coroutines-bom:${versions.coroutines}")
+            implementation platform("com.fasterxml.jackson:jackson-bom:${versions.jackson}")
 
             constraints {
-                allMain "ru.kontur.kinfra:kinfra-commons:${versions.commons}"
                 allMain "ru.kontur.kinfra:kinfra-io:${versions.io}"
-                allMain "ru.kontur.jinfra:jinfra-logging:${versions.logging}"
+                implementation "ru.kontur.kinfra:kinfra-commons:${versions.commons}"
+                implementation "ru.kontur.jinfra:jinfra-logging:${versions.logging}"
             }
         }
     }
 }
 
 dependencies {
-    api "ru.kontur.kinfra:kinfra-io:${versions.io}"
-    api "com.fasterxml.jackson.core:jackson-core"
-
+    api "ru.kontur.kinfra:kinfra-io"
     implementation "ru.kontur.kinfra:kinfra-commons"
     implementation "ru.kontur.jinfra:jinfra-logging"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8"
     implementation "com.fasterxml.jackson.core:jackson-databind"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-cbor"
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {

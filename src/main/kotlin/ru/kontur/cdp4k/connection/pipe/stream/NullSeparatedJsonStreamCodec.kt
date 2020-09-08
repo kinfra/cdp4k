@@ -1,5 +1,6 @@
 package ru.kontur.cdp4k.connection.pipe.stream
 
+import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import java.io.CharArrayReader
@@ -22,7 +23,10 @@ internal object NullSeparatedJsonStreamCodec : CdpMessageStream.Codec {
             onMalformedInput(CodingErrorAction.REPORT)
             onUnmappableCharacter(CodingErrorAction.REPORT)
         }
-        val generator = jsonFactory.createGenerator(output)
+        val generator = jsonFactory.createGenerator(output).apply {
+            disable(JsonGenerator.Feature.FLUSH_PASSED_TO_STREAM)
+            disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET)
+        }
 
         return object : CdpMessageStream {
             override fun readMessage(): ObjectNode? {
