@@ -50,13 +50,16 @@ class RemoteInputStream(
         }
     }
 
-    override suspend fun transferTo(output: OutputByteStream) {
+    override suspend fun transferTo(output: OutputByteStream): Long {
         check(!closed) { "Stream is closed" }
 
+        var totalCount = 0L
         while (true) {
             val chunk = readChunk(TRANSFER_CHUNK_SIZE) ?: break
+            totalCount += chunk.size
             output.put(ByteBuffer.wrap(chunk))
         }
+        return totalCount
     }
 
     override suspend fun close() {
@@ -67,7 +70,7 @@ class RemoteInputStream(
             // This call may fail when the current coroutine is cancelled
             // and connection's outgoing buffer is full.
             // It is ok if the current session is closing,
-            // otherwise it may lead to leak on the Chrome side.
+            // otherwise it may lead to a leak on the Chrome side.
             // todo: prevent stream leak on cancellation
             ioDomain.close(handle)
         } catch (e: CancellationException) {

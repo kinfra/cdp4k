@@ -8,7 +8,7 @@ ext {
 
     versions = [
         commons: '1.4',
-        io: '0.2',
+        io: '1.0',
         logging: '0.14',
 
         jackson: '2.10.3',
