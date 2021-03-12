@@ -9,6 +9,8 @@ import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.cdp4k.util.getString
 import ru.kontur.cdp4k.util.getStringOrNull
 import ru.kontur.cdp4k.util.jsonObject
+import java.nio.ByteBuffer
+import java.util.*
 
 /**
  * Actions and events related to the inspected page belong to the page domain.
@@ -135,6 +137,48 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
             if (transferMode != null) put("transferMode", transferMode.value)
         }
         return invoke("printToPDF", params) { PrintToPdfResult.fromTree(it) }
+    }
+
+    /**
+     * Capture page screenshot.
+     *
+     * @param format Image compression format (defaults to png).
+     * @param clip Capture the screenshot of a given region only.
+     */
+    suspend fun captureScreenshot(
+        format: ImageFormat? = null,
+        clip: Viewport? = null
+    ): ByteBuffer {
+        val params = jsonObject().apply {
+            when (format) {
+                is ImageFormat.Jpeg -> {
+                    put("format", format.format)
+                    if (format.quality != null) {
+                        put("quality", format.quality)
+                    }
+                }
+                ImageFormat.Png -> {
+                    put("format", format.format)
+                }
+                null -> {
+                }
+            }
+            if (clip != null) {
+                val clipJson = jsonObject().apply {
+                    put("x", clip.x)
+                    put("y", clip.y)
+                    put("width", clip.width)
+                    put("height", clip.height)
+                    put("scale", clip.scale)
+                }
+                replace("clip", clipJson)
+            }
+        }
+        return invoke("captureScreenshot", params) {
+            val data = it.getString("data")
+            val decoder = Base64.getDecoder()
+            ByteBuffer.wrap(decoder.decode(data))
+        }
     }
 
     /**

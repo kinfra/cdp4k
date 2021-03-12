@@ -1,6 +1,4 @@
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import ru.kontur.cdp4k.launch.ChromeCommandLine
 import ru.kontur.cdp4k.launch.ChromeSwitches
 import ru.kontur.cdp4k.launch.pipe.PipeChromeLauncher
@@ -9,6 +7,7 @@ import ru.kontur.cdp4k.protocol.CdpExperimental
 import ru.kontur.cdp4k.protocol.browser.BrowserDomain
 import ru.kontur.cdp4k.protocol.io.IoDomain
 import ru.kontur.cdp4k.protocol.io.RemoteInputStream
+import ru.kontur.cdp4k.protocol.page.ImageFormat
 import ru.kontur.cdp4k.protocol.page.LoadEventFired
 import ru.kontur.cdp4k.protocol.page.PageDomain
 import ru.kontur.cdp4k.protocol.subscribeFirst
@@ -63,10 +62,12 @@ fun main() = runBlocking {
                         }
                     }
                 }
+                captureScreenshot(rpcConnection)
             }
 
             browserDomain.close()
         }
+
     }
 
     logger.info { "Avg counters:" }
@@ -110,6 +111,30 @@ private suspend fun printPdf(rpcConnection: RpcConnection, executorIndex: Int) {
                     input.transferTo(output)
                 }
             }
+        }
+    }
+}
+
+private suspend fun captureScreenshot(rpcConnection: RpcConnection) {
+    newPage(rpcConnection) { pageSession ->
+        val pageDomain = PageDomain(pageSession)
+        pageDomain.stopLoading()
+        val pageLoaded = pageDomain.subscribeFirst(LoadEventFired)
+
+        val url = "https://www.uuidgenerator.net/"
+        val navigateResult = pageDomain.navigate(url, referrer = "https://pkk.rosreestr.ru/")
+        navigateResult.errorText?.let { err ->
+            throw RuntimeException("Failed to navigate page $url: $err")
+        }
+
+        pageLoaded.join()
+
+        val data = pageDomain.captureScreenshot(ImageFormat.Jpeg(100))
+        val image = ByteArray(data.remaining())
+        data.get(image)
+
+        withContext(Dispatchers.IO) {
+            Files.write(Path.of("screenShoot.jpg"), image)
         }
     }
 }
