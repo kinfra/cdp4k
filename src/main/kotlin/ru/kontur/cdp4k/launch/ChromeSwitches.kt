@@ -25,6 +25,15 @@ object ChromeSwitches {
     val disableDefaultApps = binary("disable-default-apps")
 
     /**
+     * The `/dev/shm` partition is too small in certain VM environments,
+     * causing Chrome to fail or crash (see http://crbug.com/715363).
+     *
+     * Use this flag to work-around this issue
+     * (a temporary directory will always be used to create anonymous shared memory files).
+     */
+    val disableDevShmUsage = binary("disable-dev-shm-usage")
+
+    /**
      * Disable extensions.
      */
     val disableExtensions = binary("disable-extensions")
@@ -40,9 +49,19 @@ object ChromeSwitches {
     val disableGpu = binary("disable-gpu")
 
     /**
+     * Disables the GPU process sandbox.
+     */
+    val disableGpuSandbox = binary("disable-gpu-sandbox")
+
+    /**
      * Disable pop-up blocking.
      */
     val disablePopupBlocking = binary("disable-popup-blocking")
+
+    /**
+     * Disables the use of a 3D software rasterizer.
+     */
+    val disableSoftwareRasterizer = binary("disable-software-rasterizer")
 
     /**
      * Disables syncing browser data to a Google Account.
@@ -58,6 +77,11 @@ object ChromeSwitches {
      * Run in headless mode, i.e., without a UI or display server dependencies.
      */
     val headless = binary("headless")
+
+    /**
+     * Ignores GPU blocklist.
+     */
+    val ignoreGpuBlocklist = binary("ignore-gpu-blocklist")
 
     /**
      * Run the GPU process as a thread in the browser process.
@@ -105,6 +129,19 @@ object ChromeSwitches {
      * Enables remote debug over HTTP on the specified port.
      */
     val remoteDebuggingPort = single("remote-debugging-port")
+
+    /**
+     * Runs the renderer and plugins in the same process as the browser.
+     */
+    val singleProcess = binary("single-process")
+
+    /**
+     * Select which implementation of GL the GPU process should use. Options are:
+     *  * `desktop`: whatever desktop OpenGL the user has installed (Linux and Mac default).
+     *  * `egl`: whatever EGL / GLES2 the user has installed (Windows default - actually ANGLE).
+     *  * `swiftshader`: The SwiftShader software renderer.
+     */
+    val useGl = single("use-gl")
 
     /**
      * Directory where the browser stores the user profile.

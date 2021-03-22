@@ -18,13 +18,13 @@ sealed class ChromeSwitch(val name: String) {
         return "--$name (${javaClass.simpleName})"
     }
 
-    class Binary internal constructor(name: String) : ChromeSwitch(name) {
+    class Binary(name: String) : ChromeSwitch(name) {
 
         val option = ChromeOption(this, "")
 
     }
 
-    class SingleValue internal constructor(name: String) : ChromeSwitch(name) {
+    class SingleValue(name: String) : ChromeSwitch(name) {
 
         fun withValue(value: String): ChromeOption {
             require(value.isNotEmpty()) { "Empty value specified for $name" }
@@ -33,7 +33,7 @@ sealed class ChromeSwitch(val name: String) {
 
     }
 
-    class MultiValue internal constructor(name: String) : ChromeSwitch(name) {
+    class MultiValue(name: String) : ChromeSwitch(name) {
 
         fun withValue(firstValue: String, vararg otherValues: String): ChromeOption {
             @OptIn(ExperimentalStdlibApi::class)
