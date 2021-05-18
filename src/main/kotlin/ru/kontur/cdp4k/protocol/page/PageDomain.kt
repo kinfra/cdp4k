@@ -147,7 +147,9 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
      */
     suspend fun captureScreenshot(
         format: ImageFormat? = null,
-        clip: Viewport? = null
+        clip: Viewport? = null,
+        @CdpExperimental
+        captureBeyondViewport: Boolean? = null
     ): ByteBuffer {
         val params = jsonObject().apply {
             when (format) {
@@ -172,6 +174,9 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
                     put("scale", clip.scale)
                 }
                 replace("clip", clipJson)
+            }
+            if (captureBeyondViewport != null) {
+                put("captureBeyondViewport", captureBeyondViewport)
             }
         }
         return invoke("captureScreenshot", params) {
