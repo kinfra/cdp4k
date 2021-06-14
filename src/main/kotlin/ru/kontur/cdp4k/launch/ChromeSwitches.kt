@@ -148,6 +148,11 @@ object ChromeSwitches {
      */
     val userDataDir = single("user-data-dir")
 
+    /**
+     * Override the default user agent with a custom one.
+     */
+    val userAgent = single("user-agent")
+
     private fun binary(name: String) = ChromeSwitch.Binary(name)
     private fun single(name: String) = ChromeSwitch.SingleValue(name)
     private fun multiple(name: String) = ChromeSwitch.MultiValue(name)

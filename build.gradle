@@ -4,7 +4,7 @@ plugins {
 }
 
 ext {
-    release = "0.6"
+    release = "0.7"
 
     versions = [
         commons: '1.4',
