@@ -1,24 +1,11 @@
-plugins {
-    id "ru.kontur.base"
-    id "org.jetbrains.kotlin.jvm"
-}
-
 dependencies {
     implementation rootProject
 
-    implementation "ru.kontur.jinfra:jinfra-logging"
+    implementation "ru.kontur.kinfra:kinfra-logging"
     implementation "ru.kontur.kinfra:kinfra-commons"
 
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8"
     implementation "com.fasterxml.jackson.core:jackson-databind"
 
     runtimeOnly "org.slf4j:slf4j-simple:1.7.30"
-}
-
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
-    kotlinOptions {
-        freeCompilerArgs += [
-            "-Xopt-in=kotlin.RequiresOptIn",
-        ]
-    }
 }

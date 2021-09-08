@@ -13,7 +13,7 @@ import ru.kontur.cdp4k.protocol.browser.BrowserVersion
 import ru.kontur.cdp4k.rpc.RpcConnection
 import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.cdp4k.util.getStringOrNull
-import ru.kontur.jinfra.logging.Logger
+import ru.kontur.kinfra.logging.Logger
 import ru.kontur.kinfra.commons.binary.toHexString
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList

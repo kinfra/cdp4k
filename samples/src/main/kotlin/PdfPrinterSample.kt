@@ -16,8 +16,8 @@ import ru.kontur.cdp4k.rpc.RpcConnection
 import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.cdp4k.rpc.impl.DefaultRpcConnection
 import ru.kontur.cdp4k.rpc.impl.HealthCheckingRpcConnection
-import ru.kontur.jinfra.logging.Logger
-import ru.kontur.jinfra.logging.LoggingContext
+import ru.kontur.kinfra.logging.Logger
+import ru.kontur.kinfra.logging.LoggingContext
 import ru.kontur.kinfra.commons.time.MonotonicInstant
 import ru.kontur.kinfra.io.OutputByteStream
 import ru.kontur.kinfra.io.use
@@ -26,7 +26,7 @@ import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 
-private val logger = Logger.currentClass().withoutContext()
+private val logger = Logger.currentClass()
 
 private val counters = ConcurrentHashMap<String, Pair<Int, Long>>()
 

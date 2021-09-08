@@ -3,6 +3,7 @@ package ru.kontur.cdp4k.connection.pipe.stream
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import ru.kontur.kinfra.io.utils.withLimit
 import java.io.CharArrayReader
 import java.io.InputStream
 import java.io.OutputStream
@@ -100,17 +101,6 @@ internal object NullSeparatedJsonStreamCodec : CdpMessageStream.Codec {
                 if (get(index) == 0.toByte()) return index
             }
             return -1
-        }
-
-        // todo: move to kinfra-io
-        private inline fun <R> ByteBuffer.withLimit(limit: Int, block: (ByteBuffer) -> R): R {
-            val oldLimit = limit()
-            return try {
-                limit(limit)
-                block(this)
-            } finally {
-                limit(oldLimit)
-            }
         }
 
     }

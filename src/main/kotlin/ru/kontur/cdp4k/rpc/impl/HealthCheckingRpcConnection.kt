@@ -12,7 +12,7 @@ import ru.kontur.cdp4k.protocol.subscribeFirst
 import ru.kontur.cdp4k.rpc.RpcConnection
 import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.cdp4k.rpc.SessionUsage
-import ru.kontur.jinfra.logging.Logger
+import ru.kontur.kinfra.logging.Logger
 import ru.kontur.kinfra.commons.time.withDeadlineAfter
 import java.time.Duration
 

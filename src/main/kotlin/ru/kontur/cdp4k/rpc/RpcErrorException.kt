@@ -15,7 +15,7 @@ class RpcErrorException private constructor(
 
     constructor(code: Int, description: String, data: JsonNode?) : this(code, description, data, null)
 
-    override fun createCopy(): RpcErrorException? {
+    override fun createCopy(): RpcErrorException {
         return RpcErrorException(code, description, data, this)
     }
 

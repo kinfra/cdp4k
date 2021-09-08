@@ -1,7 +1,7 @@
 package ru.kontur.cdp4k.util
 
 import kotlinx.coroutines.future.await
-import ru.kontur.jinfra.logging.Logger
+import ru.kontur.kinfra.logging.Logger
 
 private val logger = Logger.currentClass()
 

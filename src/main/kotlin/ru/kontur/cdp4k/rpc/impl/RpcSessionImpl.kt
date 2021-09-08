@@ -8,7 +8,7 @@ import kotlinx.coroutines.channels.actor
 import ru.kontur.cdp4k.connection.ConnectionClosedException
 import ru.kontur.cdp4k.rpc.RpcErrorException
 import ru.kontur.cdp4k.rpc.RpcSession
-import ru.kontur.jinfra.logging.Logger
+import ru.kontur.kinfra.logging.Logger
 import ru.kontur.kinfra.commons.getOrThrow
 import ru.kontur.kinfra.commons.lowerCaseName
 import java.util.concurrent.ConcurrentHashMap
@@ -100,7 +100,7 @@ internal class RpcSessionImpl(
         }
     }
 
-    private suspend fun handleIncomingMessage(message: IncomingMessage) {
+    private fun handleIncomingMessage(message: IncomingMessage) {
         val handled = when (message) {
             is IncomingMessage.Response -> handleResponse(message)
             is IncomingMessage.Event -> handleEvent(message)
@@ -119,7 +119,7 @@ internal class RpcSessionImpl(
         }
     }
 
-    private suspend fun handleEvent(event: IncomingMessage.Event): Boolean {
+    private fun handleEvent(event: IncomingMessage.Event): Boolean {
         val (methodName, data) = event
         var handled = false
         subscriptions[methodName]?.let { methodSubscriptions ->
@@ -142,13 +142,13 @@ internal class RpcSessionImpl(
 
     internal fun onDisconnect() {
         if (!state.compareAndSet(SessionState.ACTIVE, SessionState.DISCONNECTED)) return
-        logger.withoutContext().debug { "${this@RpcSessionImpl} is disconnected" }
+        logger.debug { "${this@RpcSessionImpl} is disconnected" }
         incomingMessages.close(ConnectionClosedException("Connection is closed"))
     }
 
     internal fun close() {
         if (!state.compareAndSet(SessionState.ACTIVE, SessionState.CLOSED)) return
-        logger.withoutContext().debug { "${this@RpcSessionImpl} is closed" }
+        logger.debug { "${this@RpcSessionImpl} is closed" }
         incomingMessages.close()
     }
 

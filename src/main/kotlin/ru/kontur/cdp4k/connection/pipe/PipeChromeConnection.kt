@@ -4,17 +4,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedSendChannelException
-import kotlinx.coroutines.channels.receiveOrNull
 import kotlinx.coroutines.future.await
 import ru.kontur.cdp4k.connection.ChromeConnection
 import ru.kontur.cdp4k.connection.ConnectionClosedException
 import ru.kontur.cdp4k.connection.pipe.stream.CdpMessageStream
 import ru.kontur.cdp4k.util.kill
-import ru.kontur.jinfra.logging.Logger
-import ru.kontur.jinfra.logging.LoggingContext
+import ru.kontur.kinfra.logging.Logger
+import ru.kontur.kinfra.logging.LoggingContext
 import java.io.IOException
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(DelicateCoroutinesApi::class, ExperimentalCoroutinesApi::class)
 internal class PipeChromeConnection private constructor(
     private val process: Process,
     private val codec: CdpMessageStream.Codec
@@ -29,7 +28,7 @@ internal class PipeChromeConnection private constructor(
         val messageStream = codec.createMessageStream(process.inputStream, process.outputStream)
 
         @Suppress("BlockingMethodInNonBlockingContext")
-        this.job = GlobalScope.launch(Dispatchers.IO + LoggingContext.EMPTY.add("pid", process.pid())) {
+        this.job = GlobalScope.launch(Dispatchers.IO + LoggingContext.EMPTY.with("pid", process.pid())) {
             try {
                 coroutineScope {
                     launch(CoroutineName("Chrome pipe reader")) {
@@ -44,7 +43,9 @@ internal class PipeChromeConnection private constructor(
 
                     launch(CoroutineName("Chrome pipe writer")) {
                         while (true) {
-                            val message = outgoing.receiveOrNull() ?: break
+                            val receiveResult = outgoing.receiveCatching()
+                            receiveResult.exceptionOrNull()?.let { throw it }
+                            val message = receiveResult.getOrNull() ?: break
                             messageStream.writeMessage(message)
                             yield()
                         }
@@ -56,7 +57,7 @@ internal class PipeChromeConnection private constructor(
                             val reader = stderr.bufferedReader()
                             while (true) {
                                 val line = reader.readLine() ?: break
-                                logger.debug { "stderr: $line" }
+                                stderrLogger.info { line }
                             }
                             logger.debug { "End of stderr" }
                         } catch (e: IOException) {
@@ -65,8 +66,7 @@ internal class PipeChromeConnection private constructor(
                     }
 
                     val exitValue = process.onExit().await().exitValue()
-                    val message = "Process finished (exit value: $exitValue)"
-                    logger.info { message }
+                    logger.info { "Process finished (exit value: $exitValue)" }
                     outgoing.close()
                 }
             } catch (e: Exception) {
@@ -116,6 +116,7 @@ internal class PipeChromeConnection private constructor(
     companion object {
 
         private val logger = Logger.currentClass()
+        private val stderrLogger = Logger.forName("ru.kontur.cdp4k.connection.stderr")
 
         fun open(process: Process, codec: CdpMessageStream.Codec): PipeChromeConnection {
             return PipeChromeConnection(process, codec).also {

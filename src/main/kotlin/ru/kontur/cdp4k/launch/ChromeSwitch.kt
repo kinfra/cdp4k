@@ -37,7 +37,7 @@ sealed class ChromeSwitch(val name: String) {
 
         fun withValue(firstValue: String, vararg otherValues: String): ChromeOption {
             @OptIn(ExperimentalStdlibApi::class)
-            val allValues = buildList<String>(otherValues.size + 1) {
+            val allValues = buildList(otherValues.size + 1) {
                 add(firstValue)
                 addAll(otherValues)
             }
