@@ -79,6 +79,11 @@ object ChromeSwitches {
     val headless = binary("headless")
 
     /**
+     * Ignore certificate errors
+     */
+    val ignoreCertificateErrors = binary("ignore-certificate-errors")
+
+    /**
      * Ignores GPU blocklist.
      */
     val ignoreGpuBlocklist = binary("ignore-gpu-blocklist")
@@ -152,11 +157,6 @@ object ChromeSwitches {
      * Override the default user agent with a custom one.
      */
     val userAgent = single("user-agent")
-
-    /**
-     * Ignore certificate errors
-     */
-    val ignoreCertificateErrors = binary("ignore-certificate-errors")
 
     private fun binary(name: String) = ChromeSwitch.Binary(name)
     private fun single(name: String) = ChromeSwitch.SingleValue(name)
