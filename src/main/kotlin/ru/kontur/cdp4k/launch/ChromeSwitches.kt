@@ -79,6 +79,11 @@ object ChromeSwitches {
     val headless = binary("headless")
 
     /**
+     * Ignore certificate errors
+     */
+    val ignoreCertificateErrors = binary("ignore-certificate-errors")
+
+    /**
      * Ignores GPU blocklist.
      */
     val ignoreGpuBlocklist = binary("ignore-gpu-blocklist")
