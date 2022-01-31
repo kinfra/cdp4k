@@ -1,3 +1,3 @@
 include:
   - project: 'jinfra/ci-tools/gitlab-ci-templates'
-    file: '.gradle-publish-gitlab-ci.yml'
+    file: 'gradle-build-publish.yml'
