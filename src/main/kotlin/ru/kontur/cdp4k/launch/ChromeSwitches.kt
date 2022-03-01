@@ -158,10 +158,14 @@ object ChromeSwitches {
      */
     val userAgent = single("user-agent")
 
+    /**
+     * Uses a specified proxy server, overrides system settings. This switch only affects HTTP and HTTPS requests.
+     */
+    val proxyServer = single("proxy-server")
+
     private fun binary(name: String) = ChromeSwitch.Binary(name)
     private fun single(name: String) = ChromeSwitch.SingleValue(name)
     private fun multiple(name: String) = ChromeSwitch.MultiValue(name)
-
 }
 
 fun ChromeCommandLine.Builder.useHeadlessDefaults() {
