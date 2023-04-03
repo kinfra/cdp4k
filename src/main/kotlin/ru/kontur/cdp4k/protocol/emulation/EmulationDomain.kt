@@ -39,4 +39,19 @@ class EmulationDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
 
         invoke("setEmulatedMedia", params)
     }
+
+    /**
+     * Overrides default host system locale with the specified one.
+     *
+     * @param locale ICU style C locale (e.g. "en_US"). If not specified or empty, disables the override and restores default host system locale.
+     */
+    suspend fun setLocaleOverride(
+        locale: String? = null,
+    ) {
+        val params = jsonObject().apply {
+            locale?.let { put("locale", it) }
+        }
+
+        invoke("setLocaleOverride", params)
+    }
 }
