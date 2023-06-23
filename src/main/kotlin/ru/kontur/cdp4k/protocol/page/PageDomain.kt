@@ -29,9 +29,9 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
     suspend fun captureScreenshot(
         format: ImageFormat? = null,
         clip: Viewport? = null,
-        @CdpExperimental
-        captureBeyondViewport: Boolean? = null
+        captureBeyondViewport: Boolean? = null,
     ): ByteBuffer {
+
         val params = jsonObject().apply {
             when (format) {
                 is ImageFormat.Jpeg -> {
@@ -161,8 +161,7 @@ class PageDomain(session: RpcSession) : CdpDomain<PageEvent>(session) {
         headerTemplate: String? = null,
         footerTemplate: String? = null,
         preferCSSPageSize: Boolean? = null,
-        @CdpExperimental
-        transferMode: PdfTransferMode? = null
+        transferMode: PdfTransferMode? = null,
     ): PrintToPdfResult {
 
         val params = jsonObject().apply {

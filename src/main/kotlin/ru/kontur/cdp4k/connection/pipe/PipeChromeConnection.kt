@@ -5,13 +5,15 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.time.withTimeoutOrNull
 import ru.kontur.cdp4k.connection.ChromeConnection
 import ru.kontur.cdp4k.connection.ConnectionClosedException
 import ru.kontur.cdp4k.connection.pipe.stream.CdpMessageStream
-import ru.kontur.cdp4k.util.kill
 import ru.kontur.kinfra.logging.Logger
 import ru.kontur.kinfra.logging.LoggingContext
 import java.io.IOException
+import java.time.Duration
+import kotlin.streams.asSequence
 
 @OptIn(DelicateCoroutinesApi::class, ExperimentalCoroutinesApi::class)
 internal class PipeChromeConnection private constructor(
@@ -21,6 +23,9 @@ internal class PipeChromeConnection private constructor(
 
     private val subscriber = CompletableDeferred<ChromeConnection.Subscriber>()
     private val outgoing = Channel<ObjectNode>()
+
+    @Volatile
+    private var closed = false
 
     private lateinit var job: Job
 
@@ -34,7 +39,15 @@ internal class PipeChromeConnection private constructor(
                     launch(CoroutineName("Chrome pipe reader")) {
                         val subscriber = subscriber.await()
                         while (true) {
-                            val message = messageStream.readMessage() ?: break
+                            val message = try {
+                                messageStream.readMessage() ?: break
+                            } catch (e: IOException) {
+                                if (closed) {
+                                    break
+                                } else {
+                                    throw e
+                                }
+                            }
                             subscriber.onIncomingMessage(message)
                             yield()
                         }
@@ -46,7 +59,15 @@ internal class PipeChromeConnection private constructor(
                             val receiveResult = outgoing.receiveCatching()
                             receiveResult.exceptionOrNull()?.let { throw it }
                             val message = receiveResult.getOrNull() ?: break
-                            messageStream.writeMessage(message)
+                            try {
+                                messageStream.writeMessage(message)
+                            } catch (e: IOException) {
+                                if (closed) {
+                                    break
+                                } else {
+                                    throw e
+                                }
+                            }
                             yield()
                         }
                     }
@@ -61,7 +82,9 @@ internal class PipeChromeConnection private constructor(
                             }
                             logger.debug { "End of stderr" }
                         } catch (e: IOException) {
-                            logger.error(e) { "Failed to read stderr" }
+                            if (!closed) {
+                                logger.error(e) { "Failed to read stderr" }
+                            }
                         }
                     }
 
@@ -108,12 +131,30 @@ internal class PipeChromeConnection private constructor(
     }
 
     override suspend fun close() {
-        logger.debug { "Closing connection to PID ${process.pid()}" }
-        process.toHandle().kill()
+        if (closed) return
+        closed = true
+
+        logger.info { "Closing connection to PID ${process.pid()}" }
+        subscriber.cancel("closing connection")
+        // Try to terminate process gracefully
+        process.destroy()
+        try {
+            withTimeoutOrNull(TERMINATION_TIMEOUT) {
+                process.onExit().await()
+            }
+        } finally {
+            // Kill it forcibly after timeout
+            // Chrome may leave child processes, so they are killed first
+            process.toHandle().descendants().forEach { it.destroyForcibly() }
+            process.destroyForcibly()
+        }
+        // Wait for I/O to be finished
         job.join()
     }
 
     companion object {
+
+        private val TERMINATION_TIMEOUT = Duration.ofSeconds(1)
 
         private val logger = Logger.currentClass()
         private val stderrLogger = Logger.forName("ru.kontur.cdp4k.connection.stderr")
@@ -124,7 +165,7 @@ internal class PipeChromeConnection private constructor(
                     it.open()
                 } catch (e: Throwable) {
                     // clean up failed process
-                    process.toHandle().destroyForcibly()
+                    process.destroyForcibly()
                     throw e
                 }
             }

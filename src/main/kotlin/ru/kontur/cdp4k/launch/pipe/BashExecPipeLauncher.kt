@@ -16,7 +16,6 @@ internal object BashExecPipeLauncher : PipeLauncher {
     private val specialChars = listOf(' ', '\'', '"', '<', '>', '&', '\\')
 
     override suspend fun launchChrome(commandLine: ChromeCommandLine): Process {
-        @OptIn(ExperimentalStdlibApi::class)
         val bashCommand = buildList {
             add("exec")
             add(commandLine.command)
@@ -27,7 +26,12 @@ internal object BashExecPipeLauncher : PipeLauncher {
             add("4>&1")
         }
 
-        val bashCommandLine = listOf("bash", "-c", bashCommand.joinToString(" "))
+        val bashCommandLine = buildList {
+            addAll(commandLine.prefix)
+            add("bash")
+            add("-c")
+            add(bashCommand.joinToString(" "))
+        }
         return withContext(Dispatchers.IO) {
             ProcessBuilder(bashCommandLine).start()
         }

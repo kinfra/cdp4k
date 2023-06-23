@@ -14,8 +14,7 @@ class TargetInfo(
     val url: String,
     val attached: Boolean,
     val openerId: TargetId?,
-    @CdpExperimental
-    val browserContextId: BrowserContextId?
+    val browserContextId: BrowserContextId?,
 ) {
 
     companion object {

@@ -1,12 +1,15 @@
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.kontur.cdp4k.launch.ChromeCommandLine
 import ru.kontur.cdp4k.launch.ChromeSwitches
 import ru.kontur.cdp4k.launch.pipe.PipeChromeLauncher
 import ru.kontur.cdp4k.launch.useHeadlessDefaults
 import ru.kontur.cdp4k.protocol.CdpExperimental
 import ru.kontur.cdp4k.protocol.browser.BrowserDomain
+import ru.kontur.cdp4k.protocol.io.CdpInputStream
 import ru.kontur.cdp4k.protocol.io.IoDomain
-import ru.kontur.cdp4k.protocol.io.RemoteInputStream
 import ru.kontur.cdp4k.protocol.page.ImageFormat
 import ru.kontur.cdp4k.protocol.page.LoadEventFired
 import ru.kontur.cdp4k.protocol.page.PageDomain
@@ -16,11 +19,11 @@ import ru.kontur.cdp4k.rpc.RpcConnection
 import ru.kontur.cdp4k.rpc.RpcSession
 import ru.kontur.cdp4k.rpc.impl.DefaultRpcConnection
 import ru.kontur.cdp4k.rpc.impl.HealthCheckingRpcConnection
-import ru.kontur.kinfra.logging.Logger
-import ru.kontur.kinfra.logging.LoggingContext
 import ru.kontur.kinfra.commons.time.MonotonicInstant
 import ru.kontur.kinfra.io.OutputByteStream
 import ru.kontur.kinfra.io.use
+import ru.kontur.kinfra.logging.Logger
+import ru.kontur.kinfra.logging.LoggingContext
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
@@ -30,16 +33,29 @@ private val logger = Logger.currentClass()
 
 private val counters = ConcurrentHashMap<String, Pair<Int, Long>>()
 
-@Suppress("BlockingMethodInNonBlockingContext")
-fun main() = runBlocking {
+suspend fun main() {
     val dataDir = Path.of("./build/chrome")
     dataDir.toFile().deleteRecursively()
     Files.createDirectories(dataDir)
 
-    val chromePath = "/usr/lib/chromium-browser/chromium-browser"
+    val chromePath = "/usr/lib/chromium/chromium"
     val commandLine = ChromeCommandLine.build(chromePath, dataDir) {
         useHeadlessDefaults()
+        if (ProcessHandle.current().pid() == 1L) {
+            // Use https://github.com/krallin/tini as a replacement for init process
+            addPrefix("tini", "-s", "-g", "--")
+        }
+        // Run Chromium in Docker
+        addPrefix(
+            "docker",
+            "run",
+            "--rm",
+            "--init",
+            "--interactive",
+            "registry.kontur.host/realty/base-images/openjdk-17-slim-chromium:latest"
+        )
         add(ChromeSwitches.noSandbox)
+        add(ChromeSwitches.disableDevShmUsage)
     }
 
     val executorsCount = 2
@@ -104,7 +120,7 @@ private suspend fun printPdf(rpcConnection: RpcConnection, executorIndex: Int) {
         }
 
         logExecutionTime("PDF transfer") {
-            RemoteInputStream(pdfResponse.stream!!, IoDomain(pageSession)).use { input ->
+            CdpInputStream(pdfResponse.stream!!, IoDomain(pageSession)).use { input ->
                 val destPath = inputFile.resolveSibling("result${executorIndex}.pdf")
                 // input.transferTo(OutputByteStream.nullStream())
                 OutputByteStream.intoFile(destPath).use { output ->

@@ -7,7 +7,10 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.util.*
 
-class RemoteInputStream(
+@Deprecated("renamed", ReplaceWith("CdpInputStream"))
+typealias RemoteInputStream = CdpInputStream
+
+class CdpInputStream(
     private val handle: StreamHandle,
     private val ioDomain: IoDomain
 ) : InputByteStream {

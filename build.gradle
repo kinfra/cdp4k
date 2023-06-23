@@ -4,15 +4,15 @@ plugins {
 }
 
 ext {
-    release = "0.13"
+    release = "0.14"
 
     versions = [
-        commons: '1.5',
+        commons: '1.7',
         io: '1.1.1',
-        logging: '0.3',
+        logging: '1.1',
 
         jackson: '2.12.5',
-        coroutines: '1.5.2',
+        coroutines: '1.6.4',
     ]
 }
 

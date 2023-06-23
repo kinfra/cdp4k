@@ -5,6 +5,7 @@ import java.util.*
 import kotlin.collections.LinkedHashMap
 
 class ChromeCommandLine private constructor(
+    val prefix: List<String>,
     val command: String,
     private val _options: Map<ChromeSwitch, ChromeOption>
 ) {
@@ -30,7 +31,7 @@ class ChromeCommandLine private constructor(
 
     @PublishedApi
     internal fun toBuilder(): Builder {
-        return Builder(command, options)
+        return Builder(command, prefix, options)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -49,8 +50,11 @@ class ChromeCommandLine private constructor(
 
     class Builder internal constructor(
         private val command: String,
-        options: Collection<ChromeOption>
+        prefix: List<String>,
+        options: Collection<ChromeOption>,
     ) {
+
+        val prefix: MutableList<String> = prefix.toMutableList()
 
         private val options = LinkedHashMap<ChromeSwitch, ChromeOption>(options.size).also { map ->
             options.associateByTo(map) { it.switch }
@@ -86,9 +90,13 @@ class ChromeCommandLine private constructor(
             options.remove(switch)
         }
 
+        fun addPrefix(vararg command: String) {
+            prefix.addAll(0, command.asList())
+        }
+
         @PublishedApi
         internal fun build(): ChromeCommandLine {
-            return ChromeCommandLine(command, options.toMap())
+            return ChromeCommandLine(prefix.toList(), command, options.toMap())
         }
 
     }
@@ -102,7 +110,7 @@ class ChromeCommandLine private constructor(
         @PublishedApi
         internal fun createBuilder(command: String, dataDir: Path): Builder {
             require(command.isNotEmpty()) { "Empty command specified" }
-            return Builder(command, emptyList()).apply {
+            return Builder(command, emptyList(), emptyList()).apply {
                 set(ChromeSwitches.userDataDir, dataDir.toAbsolutePath().toString())
             }
         }

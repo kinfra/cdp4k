@@ -125,14 +125,15 @@ class DefaultRpcConnection private constructor(
 
     private suspend fun onIncomingMessage(message: ObjectNode) {
         val sessionId = message.getStringOrNull("sessionId")
+        val parsedMessage = IncomingMessage.parse(message)
+        logger.debug { "Received message ${parsedMessage.messageId} for session $sessionId: $parsedMessage" }
+
         val targetSessions = findSessions(sessionId)
         if (targetSessions.isEmpty()) {
-            logger.debug { "Received a message for unknown session $sessionId" }
+            logger.debug { "No sessions with id $sessionId are opened" }
             return
         }
 
-        val parsedMessage = IncomingMessage.parse(message)
-        logger.debug { "Received message ${parsedMessage.messageId} for session $sessionId: $parsedMessage" }
         for (session in targetSessions) {
             session.onIncomingMessage(parsedMessage)
         }
