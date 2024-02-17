@@ -1,6 +1,5 @@
 pluginManagement {
     def versions = [
-        'ru.kontur': '5.13.2',
         'org.jetbrains.kotlin': '1.8.21',
     ]
 
