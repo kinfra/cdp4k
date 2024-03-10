@@ -1,9 +1,11 @@
+import org.gradle.api.publish.maven.MavenPublication
+
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id "ru.kontur.library" version '5.13.2'
     id "org.jetbrains.kotlin.jvm"
-    id 'ru.kontur.kinfra.presets' version '1.5'
+    id 'ru.kontur.kinfra.presets' version '2.0'
+    id 'signing'
 }
 
 ext {
@@ -22,10 +24,14 @@ ext {
 archivesBaseName = "cdp4k"
 
 allprojects {
-    apply plugin: "ru.kontur.base"
     apply plugin: "org.jetbrains.kotlin.jvm"
 
     group = "ru.kontur.cdp4k"
+    version = release
+
+    repositories {
+        mavenCentral()
+    }
 
     plugins.withId("java") {
         dependencies {
@@ -33,7 +39,7 @@ allprojects {
             implementation platform("com.fasterxml.jackson:jackson-bom:${versions.jackson}")
 
             constraints {
-                allMain "ru.kontur.kinfra:kinfra-io:${versions.io}"
+                implementation "ru.kontur.kinfra:kinfra-io:${versions.io}"
                 implementation "ru.kontur.kinfra:kinfra-commons:${versions.commons}"
                 implementation "ru.kontur.kinfra:kinfra-logging:${versions.logging}"
             }
@@ -41,7 +47,7 @@ allprojects {
     }
 
     plugins.withId("java-library") {
-        version = buildVersion(release) { libraryDefaults() }
+        version = release //todo more clever way to set version
     }
 
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
@@ -63,7 +69,46 @@ jar {
     manifest.attributes "Automatic-Module-Name": "ru.kontur.kinfra.cdp4k"
 }
 
+signing {
+    sign publishing.publications
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 publishing {
+    publications{
+        maven(MavenPublication) {
+            pom {
+                name = 'kinfra-cdp4k'
+                group = 'ru.kontur.kinfra'
+                artifactId = 'kinfra-cdp4k'
+
+                description = 'Library for cdp4k'
+                url = 'https://github.com/kinfra/kinfra-cdp4k'
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'http://www.opensource.org/licenses/mit-license.php'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'frost13it'
+                        name = 'Vladimir Petrakovich'
+                        email = 'public@frostbit.tk'
+                    }
+                }
+                scm {
+                    connection = "scm:git:git://github.com:kinfra/kinfra-cdp4k.git"
+                    developerConnection = 'scm:git:ssh://github.com:kinfra/kinfra-cdp4k.git'
+                    url = 'https://github.com/kinfra/kinfra-cdp4k'
+                }
+            }
+        }
+    }
     repositories {
         def properties = project.properties
         def repoUrl = properties["publishing.repo.url"]
